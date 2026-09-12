@@ -1,0 +1,19 @@
+# Java
+backend/target/
+*.log
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Local configuration
+.env
+application-local.yml
+

@@ -1,0 +1,19 @@
+{
+  "name": "smartcharge-park-demo-frontend",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "element-plus": "2.14.5",
+    "vue": "3.5.42"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "5.2.1",
+    "vite": "6.1.0"
+  }
+}
