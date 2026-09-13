@@ -5,10 +5,10 @@
 - Java 17
 - Maven 3.6.3 或更高版本
 - MySQL 8
-- Node.js 20.19+、22.12+ 或兼容的新版本
+- Node.js 22 LTS
 - pnpm
 
-本次验证使用 Java 17.0.20.1、Maven 3.9.16、MySQL 8.4.11、Node.js 24.19.0 和 pnpm 11.19.0。
+当前本地开发环境使用 Java 17.0.20.1、Maven 3.9.16、MySQL 8、Node.js 22 LTS 和 pnpm。
 
 ## 2. 初始化数据库
 
@@ -21,18 +21,20 @@ SOURCE database/init.sql;
 默认后端连接为：
 
 ```text
-jdbc:mysql://127.0.0.1:3307/smartcharge_demo
+jdbc:mysql://127.0.0.1:3306/smartcharge_demo
 用户名 root
-密码为空
+密码通过本机环境变量 DB_PASSWORD 配置
 ```
 
-如果本机 MySQL 使用 3306 或设置了密码，请在启动后端前设置：
+如需覆盖默认连接参数，请在启动后端前设置：
 
 ```powershell
 $env:DB_URL='jdbc:mysql://127.0.0.1:3306/smartcharge_demo?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false'
 $env:DB_USERNAME='root'
-$env:DB_PASSWORD='你的密码'
+$env:DB_PASSWORD='<仅在本机填写，不提交真实密码>'
 ```
+
+IntelliJ IDEA 已建立后端、前端及复合运行配置，可通过复合运行配置同时启动 Spring Boot 后端与 Vue/Vite 前端；本机数据库环境变量保存在 IDEA 私有运行配置中，不纳入 Git 仓库。
 
 ## 3. 启动后端
 
