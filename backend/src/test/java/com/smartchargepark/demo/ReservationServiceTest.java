@@ -8,6 +8,8 @@ import com.smartchargepark.demo.mapper.StationMapper;
 import com.smartchargepark.demo.model.Station;
 import com.smartchargepark.demo.service.ReservationService;
 import org.junit.jupiter.api.Test;
+import com.smartchargepark.demo.model.Reservation;
+import com.smartchargepark.demo.model.DemoOrder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -40,7 +42,7 @@ class ReservationServiceTest {
         assertThat(result.reservationStatus()).isEqualTo("PENDING_PAYMENT");
         assertThat(result.orderStatus()).isEqualTo("PENDING_PAYMENT");
         assertThat(result.estimatedAmount()).isEqualByComparingTo("5.35");
-        verify(reservationMapper).insert(any());
-        verify(orderMapper).insert(any());
+        verify(reservationMapper).insert(any(Reservation.class));
+        verify(orderMapper).insert(any(DemoOrder.class));
     }
 }
