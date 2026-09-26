@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.ThreadLocalRandom;
@@ -36,6 +37,9 @@ public class ReservationService {
 
     @Transactional
     public ReservationResult create(ReservationRequest request) {
+        if (request.reservationDate().isBefore(LocalDate.now())) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "预约日期不能早于当前日期");
+        }
         if (!StationService.TIME_SLOTS.contains(request.timeSlot())) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "预约时段不在可选范围内");
         }

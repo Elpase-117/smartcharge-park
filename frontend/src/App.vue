@@ -13,9 +13,17 @@ const selected = ref(null)
 const availability = ref([])
 const result = ref(null)
 
-const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+function formatLocalDate(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const tomorrow = new Date()
+tomorrow.setDate(tomorrow.getDate() + 1)
 const reservation = reactive({
-  reservationDate: tomorrow.toISOString().slice(0, 10),
+  reservationDate: formatLocalDate(tomorrow),
   timeSlot: ''
 })
 
@@ -25,6 +33,12 @@ const selectedAvailability = computed(() =>
 
 function statusText(station) {
   return station.status === 'SNAPSHOT_FULL' ? '采集时点已满' : '采集时点有空闲'
+}
+
+function disabledReservationDate(date) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return date.getTime() < today.getTime()
 }
 
 async function login() {
@@ -160,15 +174,15 @@ onMounted(() => {
               {{ station.chargingMode }}
             </el-tag>
           </div>
-          <h2>{{ station.name }}</h2>
-          <p class="address">{{ station.address }}</p>
+          <h2 :title="station.name">{{ station.name }}</h2>
+          <p class="address" :title="station.address">{{ station.address }}</p>
           <p class="snapshot-line">状态采集：{{ station.snapshotTime }}</p>
           <div class="resource-row">
             <div><strong>{{ station.availableChargers }}/{{ station.totalChargers }}</strong><span>空闲 / 总枪数</span></div>
             <div><strong>{{ station.powerSummary }}</strong><span>公开功率</span></div>
             <div><strong>¥{{ station.electricityPrice }}</strong><span>采集时点电价/度</span></div>
           </div>
-          <p class="policy-line"><strong>停车：</strong>{{ station.parkingPolicy }}</p>
+          <p class="policy-line" :title="station.parkingPolicy"><strong>停车：</strong>{{ station.parkingPolicy }}</p>
           <el-button type="primary" plain class="full-button" @click="openStation(station)">查看详情 / 预约</el-button>
         </article>
       </section>
@@ -207,7 +221,9 @@ onMounted(() => {
               v-model="reservation.reservationDate"
               type="date"
               value-format="YYYY-MM-DD"
+              :editable="false"
               :clearable="false"
+              :disabled-date="disabledReservationDate"
               @change="loadAvailability"
             />
             <div class="slot-list">
