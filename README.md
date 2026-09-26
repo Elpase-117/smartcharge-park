@@ -67,9 +67,12 @@
 
 - `backend`：Java 17、Spring Boot 3.5.16、MyBatis-Plus 3.5.17、MySQL 8
 - `frontend`：Vue 3、Element Plus、Vite
-- `database/init.sql`：数据库结构、10 个公开站点样本及 Demo 模拟业务数据
+- `database/init.sql`：仅创建本地数据库，不再删除或重建业务表
+- `backend/src/main/resources/db/migration`：Flyway 数据库版本脚本；V1 为旧版基线，V2 完成站点结构与 10 个公开站点样本升级
 - `scripts/test-flow.ps1`：最小闭环接口验证脚本
 - `LOCAL_RUN.md`：本地启动说明
+
+数据库结构与种子数据以 Flyway 迁移脚本为唯一版本来源。已有旧库首次启动时会登记 V1 基线并执行 V2，保留预约和订单；空库会依次执行 V1、V2。后续数据库变更只能新增更高版本迁移文件，已执行的迁移不得修改或删除。
 
 ## 演示账号
 
@@ -78,7 +81,7 @@
 
 ## 快速启动
 
-1. 启动 MySQL 8，并执行 `database/init.sql`。
+1. 启动 MySQL 8；首次使用时执行 `database/init.sql` 创建空数据库。
 2. 进入 `backend`，执行 `mvn spring-boot:run`。
 3. 进入 `frontend`，执行 `pnpm install` 和 `pnpm dev`。
 4. 浏览器打开 `http://127.0.0.1:5173`。
