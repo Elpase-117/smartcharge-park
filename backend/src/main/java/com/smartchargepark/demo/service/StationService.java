@@ -30,7 +30,9 @@ public class StationService {
     public List<Station> list(String keyword) {
         LambdaQueryWrapper<Station> query = new LambdaQueryWrapper<Station>().orderByAsc(Station::getId);
         if (StringUtils.hasText(keyword)) {
-            query.and(q -> q.like(Station::getName, keyword).or().like(Station::getAddress, keyword));
+            query.and(q -> q.like(Station::getName, keyword)
+                    .or().like(Station::getOperatorBrand, keyword)
+                    .or().like(Station::getAddress, keyword));
         }
         return stationMapper.selectList(query);
     }

@@ -33,17 +33,21 @@ h1 { margin-bottom: 8px; font-size: clamp(28px, 4vw, 40px); }
 .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
 .topbar .eyebrow { margin-top: 0; }
 .user-area { display: flex; align-items: center; gap: 8px; }
+.data-boundary { margin-bottom: 18px; }
 .search-panel { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 18px; background: #fff; border: 1px solid #dbe5f1; border-radius: 14px; }
 .station-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 18px; margin-top: 22px; }
 .station-card { padding: 24px; background: #fff; border: 1px solid #dbe5f1; border-radius: 16px; box-shadow: 0 8px 28px rgba(40, 72, 110, .06); }
 .station-card__head { display: flex; align-items: center; justify-content: space-between; color: #23805b; font-size: 14px; }
 .status-dot { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: #2ca870; }
+.status-dot--full { background: #909399; }
 .station-card h2 { margin: 22px 0 6px; font-size: 22px; }
+.snapshot-line { margin: -4px 0 0; color: #8a98aa; font-size: 12px; }
 .resource-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 22px 0; }
 .resource-row div { padding: 14px 8px; text-align: center; background: #f6f9fd; border-radius: 10px; }
 .resource-row strong, .resource-row span { display: block; }
-.resource-row strong { font-size: 20px; color: #1769e0; }
+.resource-row strong { min-height: 42px; display: grid; place-items: center; font-size: 17px; color: #1769e0; line-height: 1.25; }
 .resource-row span { margin-top: 4px; color: #7b899a; font-size: 12px; }
+.policy-line { min-height: 48px; margin-bottom: 18px; color: #4f6278; font-size: 13px; line-height: 1.7; }
 
 .drawer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .drawer-head .eyebrow { margin-top: 0; }
@@ -65,5 +69,6 @@ h1 { margin-bottom: 8px; font-size: clamp(28px, 4vw, 40px); }
   .topbar { align-items: flex-start; }
   .search-panel { grid-template-columns: 1fr; }
   .station-grid { grid-template-columns: 1fr; }
+  .resource-row { grid-template-columns: 1fr; }
   .slot-list { grid-template-columns: 1fr; }
 }

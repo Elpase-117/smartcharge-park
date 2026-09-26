@@ -23,6 +23,10 @@ const selectedAvailability = computed(() =>
   availability.value.find(item => item.timeSlot === reservation.timeSlot)
 )
 
+function statusText(station) {
+  return station.status === 'SNAPSHOT_FULL' ? '采集时点已满' : '采集时点有空闲'
+}
+
 async function login() {
   loading.value = true
   try {
@@ -110,7 +114,7 @@ onMounted(() => {
       <div class="brand-mark">SC</div>
       <p class="eyebrow">第 1 周单体版 Demo</p>
       <h1>SmartCharge Park</h1>
-      <p class="subtitle">智慧停车与新能源汽车充电预约平台</p>
+      <p class="subtitle">出发前查清站点信息，锁定合适的充电时段</p>
       <el-form label-position="top" @submit.prevent="login">
         <el-form-item label="用户名">
           <el-input v-model="loginForm.username" autocomplete="username" />
@@ -127,7 +131,7 @@ onMounted(() => {
       <header class="topbar">
         <div>
           <p class="eyebrow">SmartCharge Park</p>
-          <h1>停车与充电站点预约</h1>
+          <h1>找到并预约合适的充电时段</h1>
         </div>
         <div class="user-area">
           <span>{{ displayName }}</span>
@@ -135,8 +139,13 @@ onMounted(() => {
         </div>
       </header>
 
+      <el-alert class="data-boundary" type="info" :closable="false" show-icon>
+        <template #title>重庆北碚区域公开站点样本</template>
+        站点基础信息来源于高德地图公开页面；空闲数量为采集时点状态快照。当前 Demo 未接入第三方实时运营接口，预约容量与订单属于业务流程模拟。
+      </el-alert>
+
       <section class="search-panel">
-        <el-input v-model="keyword" clearable placeholder="输入站点名称或地址" @keyup.enter="loadStations" />
+        <el-input v-model="keyword" clearable placeholder="输入站点名称、品牌或地址" @keyup.enter="loadStations" />
         <el-button type="primary" @click="loadStations">查询站点</el-button>
       </section>
 
@@ -144,19 +153,23 @@ onMounted(() => {
         <article v-for="station in stations" :key="station.id" class="station-card">
           <div class="station-card__head">
             <div>
-              <span class="status-dot"></span>
-              <span>{{ station.status === 'AVAILABLE' ? '可预约' : station.status }}</span>
+              <span class="status-dot" :class="{ 'status-dot--full': station.status === 'SNAPSHOT_FULL' }"></span>
+              <span>{{ statusText(station) }}</span>
             </div>
-            <el-tag type="success" effect="plain">停充一体</el-tag>
+            <el-tag :type="station.status === 'SNAPSHOT_FULL' ? 'info' : 'success'" effect="plain">
+              {{ station.chargingMode }}
+            </el-tag>
           </div>
           <h2>{{ station.name }}</h2>
           <p class="address">{{ station.address }}</p>
+          <p class="snapshot-line">状态采集：{{ station.snapshotTime }}</p>
           <div class="resource-row">
-            <div><strong>{{ station.availableParking }}</strong><span>空闲车位</span></div>
-            <div><strong>{{ station.availableChargers }}</strong><span>空闲充电桩</span></div>
-            <div><strong>¥{{ station.parkingFee }}</strong><span>基础停车费</span></div>
+            <div><strong>{{ station.availableChargers }}/{{ station.totalChargers }}</strong><span>空闲 / 总枪数</span></div>
+            <div><strong>{{ station.powerSummary }}</strong><span>公开功率</span></div>
+            <div><strong>¥{{ station.electricityPrice }}</strong><span>采集时点电价/度</span></div>
           </div>
-          <el-button type="primary" plain class="full-button" @click="openStation(station)">查看详情并预约</el-button>
+          <p class="policy-line"><strong>停车：</strong>{{ station.parkingPolicy }}</p>
+          <el-button type="primary" plain class="full-button" @click="openStation(station)">查看详情 / 预约</el-button>
         </article>
       </section>
 
@@ -172,14 +185,20 @@ onMounted(() => {
           </div>
 
           <el-descriptions :column="2" border class="details">
-            <el-descriptions-item label="当前状态">可预约</el-descriptions-item>
-            <el-descriptions-item label="空闲资源">{{ selected.availableParking }} 个车位 / {{ selected.availableChargers }} 个充电桩</el-descriptions-item>
-            <el-descriptions-item label="接口类型">{{ selected.connectorType }}</el-descriptions-item>
-            <el-descriptions-item label="快慢充">{{ selected.chargingMode }}</el-descriptions-item>
-            <el-descriptions-item label="额定功率">{{ selected.ratedPowerKw }} kW</el-descriptions-item>
-            <el-descriptions-item label="当前电价">¥{{ selected.electricityPrice }}/度</el-descriptions-item>
-            <el-descriptions-item label="服务费">¥{{ selected.serviceFee }}</el-descriptions-item>
-            <el-descriptions-item label="兼容信息">{{ selected.compatibility }}</el-descriptions-item>
+            <el-descriptions-item label="状态快照">{{ statusText(selected) }}（空闲 {{ selected.availableChargers }}/{{ selected.totalChargers }}）</el-descriptions-item>
+            <el-descriptions-item label="采集时点">{{ selected.snapshotTime }}</el-descriptions-item>
+            <el-descriptions-item label="运营品牌">{{ selected.operatorBrand }}</el-descriptions-item>
+            <el-descriptions-item label="营业时间">{{ selected.operatingHours }}</el-descriptions-item>
+            <el-descriptions-item label="充电类型">{{ selected.chargingMode }}</el-descriptions-item>
+            <el-descriptions-item label="公开功率">{{ selected.powerSummary }}</el-descriptions-item>
+            <el-descriptions-item label="公开电压">{{ selected.voltageV ? `${selected.voltageV} V` : '暂无公开数据' }}</el-descriptions-item>
+            <el-descriptions-item label="当前公开价格">¥{{ selected.electricityPrice }}/度</el-descriptions-item>
+            <el-descriptions-item label="价格说明" :span="2">{{ selected.priceDetail }}</el-descriptions-item>
+            <el-descriptions-item label="停车政策" :span="2">{{ selected.parkingPolicy }}</el-descriptions-item>
+            <el-descriptions-item label="接口类型">{{ selected.connectorType || '暂无公开数据' }}</el-descriptions-item>
+            <el-descriptions-item label="兼容信息">{{ selected.compatibility || '暂无公开数据' }}</el-descriptions-item>
+            <el-descriptions-item label="数据来源">{{ selected.dataSource }}</el-descriptions-item>
+            <el-descriptions-item label="数据边界" :span="2">{{ selected.dataNotice }}</el-descriptions-item>
           </el-descriptions>
 
           <section class="reservation-box">
@@ -205,21 +224,21 @@ onMounted(() => {
               </button>
             </div>
             <p v-if="selectedAvailability" class="capacity-note">
-              已检查该时段容量，当前剩余 {{ selectedAvailability.remaining }} 个名额。
+              已检查 Demo 预约容量，当前剩余 {{ selectedAvailability.remaining }} / {{ selectedAvailability.capacity }} 个名额。
             </p>
             <el-button type="primary" :loading="loading" class="full-button" @click="createReservation">
               创建预约与待支付订单
             </el-button>
           </section>
 
-          <el-result v-if="result" icon="success" title="预约创建成功" sub-title="已同步生成待支付订单">
+          <el-result v-if="result" icon="success" title="预约容量已锁定" sub-title="已生成 Demo 待支付订单；该结果仅保证系统内预约容量，不代表现场物理车位或设备状态">
             <template #extra>
               <div class="result-grid">
                 <span>预约编号</span><strong>{{ result.reservationId }}</strong>
                 <span>订单号</span><strong>{{ result.orderNo }}</strong>
                 <span>预约时段</span><strong>{{ result.reservationDate }} {{ result.timeSlot }}</strong>
                 <span>订单状态</span><strong>待支付</strong>
-                <span>预计金额</span><strong>¥{{ result.estimatedAmount }}</strong>
+                <span>演示金额</span><strong>¥{{ result.estimatedAmount }}</strong>
               </div>
             </template>
           </el-result>

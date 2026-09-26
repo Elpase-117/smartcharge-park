@@ -18,6 +18,8 @@
 SOURCE database/init.sql;
 ```
 
+初始化脚本会重建四张业务表，并写入 10 个重庆北碚区域公开充电站样本。站点基础信息来源于高德地图公开页面，空闲数量为采集时点状态快照；预约容量、预约记录和订单属于 Demo 模拟数据。重复执行脚本会清空现有演示预约与订单，请仅在需要重置本地数据时执行。
+
 默认后端连接为：
 
 ```text
@@ -74,5 +76,5 @@ powershell -ExecutionPolicy Bypass -File scripts/test-flow.ps1
 
 ## 6. 当前边界
 
-本 Demo 是单体应用，只验证第 1 周最小闭环。真实支付、二维码核销、最终计费结算、微服务拆分及 Nacos、Gateway、Sentinel、Seata、SkyWalking、Redis、RocketMQ 等均未实现。
+本 Demo 是单体应用，只验证第 1 周最小闭环。当前未接入高德地图或运营商实时接口，也不能保证现场物理车位、设备故障和占位情况。真实支付、二维码核销、最终计费结算、微服务拆分及 Nacos、Gateway、Sentinel、Seata、SkyWalking、Redis、RocketMQ 等均未实现。
 
