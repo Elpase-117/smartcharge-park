@@ -1,92 +1,84 @@
 # SmartCharge Park
 
-基于 Spring Cloud 微服务架构的智慧停车与新能源汽车充电预约平台，第 1 周单体版 Demo。
+基于 Spring Cloud 微服务架构的智慧停车与新能源汽车充电预约平台。项目围绕新能源车主出发前选择充电站、确认预约容量并锁定合适时段的问题，提供站点查询到待支付订单的演示闭环。
 
-本阶段聚焦一个具体问题：帮助新能源车主在出发前更确定地找到合适的充电资源，并锁定一个可预约时段。演示场景围绕重庆北碚、西南大学与吾悦广场周边公开充电站展开。
+## 快速开始
 
-## 第 1 周业务闭环
+普通 Windows 用户使用项目内的一键入口，无需预装 IDEA、Git、Java、Maven、Node.js、MySQL、Nacos 或 Seata。
 
-站点查询 → 查看状态快照 → 比较充电类型、功率、价格和停车政策 → 选择日期与时段 → 检查预约容量 → 锁定预约容量 → 生成 Demo 待支付订单
+| 操作 | 入口 |
+| --- | --- |
+| 首次联网安装并启动 | [setup/install-and-run.cmd](setup/install-and-run.cmd) |
+| 后续启动 | [setup/start-all.cmd](setup/start-all.cmd) |
+| 停止并保留数据 | [setup/stop-all.cmd](setup/stop-all.cmd) |
 
-## 当前已实现
+运行条件为 Windows 10/11 x64、Windows PowerShell 5.1、首次联网；缺少 Microsoft VC++ Runtime 时按安装提示处理。安装器使用被 Git 忽略的 `.runtime` 保存私有运行环境、数据和凭据。安装、重启与重复安装已在本机含中文及空格路径的隔离副本中验证。
 
-本仓库只验证课程第 1 周规定的单体最小闭环：
+启动后打开 <http://127.0.0.1:5173>。`driver`、`driver2` 的演示密码均为 `123456`，仅供本地课程演示，与基础设施凭据无关。
 
-- 用户登录
-- 站点查询
-- 站点详情与资源查询
-- 预约日期和时段选择
-- 预约时段容量检查
-- 创建预约
-- 创建待支付订单
-- 预约与订单写入 MySQL
-- 并发容量控制测试
+详细操作见 [Windows 安装指南](setup/README_INSTALL.md)；手动开发调试见 [LOCAL_RUN.md](LOCAL_RUN.md)。
 
-并发控制的业务目标是保证最后一个可预约名额不会被两个请求同时占用。当前预约仅锁定系统中的 Demo 预约容量，不承诺现场物理车位或设备一定可用。
+## 核心功能
 
-## 数据说明
+站点查询 → 查看公开信息与状态快照 → 选择日期和时段 → 校验预约容量 → 创建预约 → 创建待支付订单。
 
-第一周 Demo 选取重庆北碚区域 10 个充电站的公开信息作为场景数据：
+- 持久化用户账号、登录与当前身份查询。
+- 10 个重庆北碚公开站点的列表、关键词搜索和详情展示；类型、功率、价格与停车政策帮助用户人工选择。
+- 预约日期、时段和剩余模拟容量查询，以及容量检查与并发冲突控制。
+- 通过 Gateway 提交已登录用户的预约，跨服务写入预约和待支付订单。
+- Nacos 注册发现与预约配置刷新、Sentinel 服务保护、Seata AT 全局提交及受控回滚验证。
 
-- 逸安启超级充电站（重庆北碚吾悦广场）
-- 广汽能源重庆北碚朝阳公园超充站
-- 易安桩白溪路充电站
-- 小鹏 S4 超快充重庆北碚吾悦广场站
-- 广汽昊铂重庆北碚吾悦广场超充站
-- 鑫牛北碚区碚城江畔充电站
-- 国家电网重庆市北碚区缙善路充电站
-- 特来电重庆燃气文星湾充电站
-- 国家电网重庆市北碚区五农街停车场充电站
-- 石化易电-中国石化西南大学超充站
+预约身份由 Bearer Token 对应的真实用户确定，客户端伪造的 userId 不作为身份依据。Token 为随机不透明令牌；新登录替换同一用户的旧令牌，不影响其他用户。
 
-数据按三层边界使用：
+## 微服务架构
 
-1. 站点名称、地址、营业时间、充电类型、枪数、功率、电压、公开价格和停车政策来源于高德地图公开页面。
-2. 空闲数量和当前价格仅代表公开页面采集时点的状态快照，采集日期未在页面截图中显示；当前项目未接入高德地图或运营商实时接口。
-3. 预约容量、预约记录、待支付订单和订单金额属于 Demo 业务模拟，用于验证预约闭环，不属于第三方真实运营数据。
+正式结构为 **四个业务微服务 + 一个 Gateway + Vue 前端**。
 
-高德地图公开用户评价仅用于识别导航、入口、坏桩、占位、功率、价格、停车和支付等使用问题，不作为本平台原生评论，也不等同于用户访谈或站点客观结论。
+```mermaid
+flowchart TD
+    Web["Vue 前端 :5173"] --> Gateway["Gateway :8084"]
+    Gateway --> User["user-service :8086"]
+    Gateway --> Station["station-service :8082"]
+    Gateway --> Reservation["reservation-service :8083"]
+    Reservation -->|UserFeign 身份确认| User
+    Reservation -->|StationFeign 只读查询| Station
+    Reservation -->|OrderFeign / XID| Order["order-service :8085"]
+    User --> UserDB[(user_db)]
+    Station --> StationDB[(station_db)]
+    Reservation --> ReservationDB[(reservation_db)]
+    Order --> OrderDB[(order_db)]
+```
 
-## 当前未实现
+| 服务 | 数据与职责 |
+| --- | --- |
+| user-service | user_db；账号、登录和基础身份 |
+| station-service | station_db；站点列表、搜索和详情 |
+| reservation-service | reservation_db；预约、容量检查和全局事务编排 |
+| order-service | order_db；内部订单创建和本地事务 |
+| gateway-service | 无业务数据库；显式路由、CORS、访问日志和响应头 |
 
-以下内容属于后续课程第 2～12 周，当前尚未完成：
+Gateway 通过 Nacos 服务发现转发 `/api/auth/**`、`/api/stations/**`、`/api/reservations/**`，没有公开订单路由。浏览器业务请求统一访问 `http://127.0.0.1:8084/api`。
 
-- Nacos
-- Spring Cloud Gateway
-- Sentinel
-- Seata
-- SkyWalking
-- RocketMQ
-- Redis 分布式能力
-- 正式微服务拆分
-- 运营 Dashboard
-- 动态充电全过程
-- 真实支付、二维码核销与最终结算
+采用 Database per Service 与 Flyway per Service：各服务管理自己的 Schema 和迁移。首次安装只准备空 Schema，服务正常启动时由 Flyway 建表、初始化演示数据或执行升级。
 
-## 技术与目录
+预约入口先通过 UserFeign 确认身份，再由 reservation-service 开启全局事务，经 OrderFeign 创建待支付订单。两个写 RM 分别属于 reservation_db 和 order_db；站点与用户查询不增加写分支。XID 由 Starter/OpenFeign 传播。
 
-- `backend`：Java 17、Spring Boot 3.5.16、MyBatis-Plus 3.5.17、MySQL 8
-- `frontend`：Vue 3、Element Plus、Vite
-- `database/init.sql`：仅创建本地数据库，不再删除或重建业务表
-- `backend/src/main/resources/db/migration`：Flyway 数据库版本脚本；V1 为旧版基线，V2 完成站点结构与 10 个公开站点样本升级
-- `scripts/test-flow.ps1`：最小闭环接口验证脚本
-- `LOCAL_RUN.md`：本地启动说明
+## 技术栈
 
-数据库结构与种子数据以 Flyway 迁移脚本为唯一版本来源。已有旧库首次启动时会登记 V1 基线并执行 V2，保留预约和订单；空库会依次执行 V1、V2。后续数据库变更只能新增更高版本迁移文件，已执行的迁移不得修改或删除。
+| 分类 | 当前技术 |
+| --- | --- |
+| 后端 | Java 17、Spring Boot 3.5.16 |
+| 微服务 | Spring Cloud 2025.0.0、Spring Cloud Alibaba 2025.0.0.0、Gateway、OpenFeign |
+| 服务与配置管理 | Nacos Server 3.3.0 |
+| 事务与服务保护 | Seata AT 2.5.0、Sentinel 1.8.9 |
+| 数据 | MySQL 8、MyBatis-Plus、Flyway |
+| 前端 | Vue 3、Element Plus、Vite |
+| 构建 | Maven 多模块、npm 锁定依赖 |
 
-## 演示账号
+Sentinel 采用嵌入式客户端及启动恢复规则，不捆绑 Dashboard。版本来源与下载校验见 [安装清单](setup/install-manifest.json)。
 
-- 用户名：`driver`
-- 密码：`123456`
+## 数据与能力边界
 
-## 快速启动
+站点名称、地址、充电类型、功率、公开价格和停车政策来自公开页面；空闲数量与页面价格仅代表采集时点快照。项目未接入地图或运营商实时接口。公开评价用于分析导航、入口、占位、功率、收费等问题，不作为本平台原生评论或实际访谈记录。
 
-1. 启动 MySQL 8；首次使用时执行 `database/init.sql` 创建空数据库。
-2. 进入 `backend`，执行 `mvn spring-boot:run`。
-3. 进入 `frontend`，执行 `pnpm install` 和 `pnpm dev`。
-4. 浏览器打开 `http://127.0.0.1:5173`。
-
-数据库连接可通过环境变量调整：`DB_URL`、`DB_USERNAME`、`DB_PASSWORD`。
-
-完整步骤见 [LOCAL_RUN.md](LOCAL_RUN.md)。
-
+预约容量、预约记录、待支付订单及估算金额为演示业务数据，不代表现场物理车位或设备保证可用。当前闭环止于待支付订单；真实支付、二维码核销、充电全过程、最终结算、运营 Dashboard，以及 Redis、RocketMQ、SkyWalking 尚未接入。

@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8080/api'
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8084/api').replace(/\/$/, '')
 
 async function request(path, options = {}) {
   const token = localStorage.getItem('smartcharge-token')
@@ -12,16 +12,19 @@ async function request(path, options = {}) {
   })
   const data = await response.json()
   if (!response.ok) {
-    throw new Error(data.message || '请求失败')
+    const error = new Error(data.message || data.detail || '请求失败')
+    error.status = response.status
+    throw error
   }
   return data
 }
 
 export const api = {
   login: (payload) => request('/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
+  me: () => request('/auth/me'),
   stations: (keyword = '') => request(`/stations?keyword=${encodeURIComponent(keyword)}`),
   station: (id) => request(`/stations/${id}`),
-  availability: (id, date) => request(`/stations/${id}/availability?date=${date}`),
+  availability: (id, date) => request(`/reservations/availability?stationId=${id}&date=${date}`),
   reserve: (payload) => request('/reservations', { method: 'POST', body: JSON.stringify(payload) })
 }
 

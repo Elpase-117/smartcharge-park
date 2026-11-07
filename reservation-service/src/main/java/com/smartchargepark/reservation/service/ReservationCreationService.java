@@ -1,0 +1,63 @@
+package com.smartchargepark.reservation.service;
+import com.smartchargepark.reservation.client.OrderFeignClient;
+import com.smartchargepark.reservation.config.ReservationProperties;
+import com.smartchargepark.reservation.dto.*;
+import com.smartchargepark.reservation.model.Reservation;
+import com.smartchargepark.reservation.experiment.RollbackExperimentHook;
+import org.apache.seata.spring.annotation.GlobalTransactional;
+import org.apache.seata.core.context.RootContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+import java.time.LocalDate;
+import java.util.List;
+@Service
+public class ReservationCreationService {
+    private static final Logger log = LoggerFactory.getLogger(ReservationCreationService.class);
+    private final ReservationWriteService writer;
+    private final StationRemoteService stations;
+    private final OrderFeignClient orders;
+    private final ReservationProperties properties;
+    private final RollbackExperimentHook rollbackExperiment;
+    public ReservationCreationService(ReservationWriteService writer, StationRemoteService stations,
+                                      OrderFeignClient orders, ReservationProperties properties,
+                                      RollbackExperimentHook rollbackExperiment) {
+        this.writer = writer; this.stations = stations; this.orders = orders; this.properties = properties;
+        this.rollbackExperiment = rollbackExperiment;
+    }
+    @GlobalTransactional(name = "create-reservation-and-order", rollbackFor = Exception.class)
+    public ReservationResult create(ReservationRequest request, Long userId) {
+        if (userId == null || userId <= 0) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
+        }
+        LocalDate today = LocalDate.now();
+        if (request.stationId() == null || request.stationId() <= 0 || request.reservationDate() == null
+                || request.reservationDate().isBefore(today)
+                || request.reservationDate().isAfter(today.plusDays(properties.getMaxDays()))
+                || request.timeSlot() == null || !List.of("09:00-10:00", "14:00-15:00", "19:00-20:00").contains(request.timeSlot())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "预约日期或时段不在可选范围内");
+        }
+        StationSummary station = stations.detail(request.stationId());
+        if (station.parkingFee() == null || station.serviceFee() == null) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "站点价格信息暂不可用");
+        }
+        // Separate Spring bean ensures phase-one local commit before the remote order branch.
+        Reservation reservation = writer.create(request, station, userId);
+        OrderCreateRequest orderRequest = new OrderCreateRequest(reservation.getId(), reservation.getUserId(),
+                reservation.getStationId(), station.parkingFee().add(station.serviceFee()));
+        // No success-shaped fallback: transport/business failures propagate to the global boundary.
+        OrderResult order = orders.create(orderRequest);
+        if (order == null || order.id() == null || !reservation.getId().equals(order.reservationId())
+                || !"PENDING_PAYMENT".equals(order.status()) || order.estimatedAmount() == null
+                || order.estimatedAmount().compareTo(orderRequest.estimatedAmount()) != 0) {
+            throw new IllegalStateException("订单服务未返回有效待支付订单");
+        }
+        log.info("[SeataTx] service=reservation-service xid={} phase=order-returned reservationId={} orderId={}",
+                RootContext.getXID(), reservation.getId(), order.id());
+        rollbackExperiment.afterOrderCreated(reservation.getId(), order.id());
+        return new ReservationResult(reservation.getId(), reservation.getStatus(), order.id(), order.orderNo(),
+                order.status(), order.estimatedAmount(), reservation.getStationId(), reservation.getReservationDate(), reservation.getTimeSlot());
+    }
+}

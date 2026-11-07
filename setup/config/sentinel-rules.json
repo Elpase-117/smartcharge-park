@@ -1,0 +1,10 @@
+{
+  "flow": [
+    {"resource":"/api/reservations/availability","limitApp":"default","grade":1,"count":2,"strategy":0,"controlBehavior":0},
+    {"resource":"GET:http://station-service/api/stations/{id}","limitApp":"default","grade":0,"count":1,"strategy":0,"controlBehavior":0}
+  ],
+  "degrade": [
+    {"resource":"GET:http://station-service/api/stations/{id}","limitApp":"default","grade":2,"count":3,"minRequestAmount":5,"statIntervalMs":5000,"timeWindow":30}
+  ],
+  "system": [{"highestCpuUsage":0.95,"highestSystemLoad":-1,"avgRt":-1,"maxThread":-1,"qps":-1}]
+}

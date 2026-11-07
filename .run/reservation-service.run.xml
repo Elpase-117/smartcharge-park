@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="reservation-service" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <module name="reservation-service" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.smartchargepark.reservation.ReservationServiceApplication" />
+    <option name="VM_PARAMETERS" value="-Dcsp.sentinel.log.dir=&quot;$PROJECT_DIR$/.runtime/logs/sentinel-client&quot;" />
+    <envs><env name="RESERVATION_DB_URL" value="jdbc:mysql://127.0.0.1:3306/reservation_db?useUnicode=true&amp;characterEncoding=utf8&amp;serverTimezone=Asia/Shanghai&amp;allowPublicKeyRetrieval=true&amp;useSSL=false" /></envs>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

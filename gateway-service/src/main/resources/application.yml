@@ -1,0 +1,56 @@
+spring:
+  application:
+    name: gateway-service
+  cloud:
+    gateway:
+      server:
+        webflux:
+          default-filters:
+            - AddResponseHeader=X-Gateway-Source, SmartCharge-Park
+          discovery:
+            locator:
+              enabled: false
+          globalcors:
+            add-to-simple-url-handler-mapping: true
+            cors-configurations:
+              '[/**]':
+                allowedOrigins:
+                  - http://127.0.0.1:5173
+                  - http://localhost:5173
+                allowedMethods: [GET, POST, OPTIONS]
+                allowedHeaders: [Content-Type, Authorization]
+                exposedHeaders: [X-Gateway-Source]
+          routes:
+            - id: user-service-route
+              uri: lb://user-service
+              predicates:
+                - Path=/api/auth/**
+            - id: station-service-route
+              uri: lb://station-service
+              predicates:
+                - Path=/api/stations/**
+            - id: reservation-service-route
+              uri: lb://reservation-service
+              predicates:
+                - Path=/api/reservations/**
+    nacos:
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        username: ${NACOS_USERNAME:}
+        password: ${NACOS_PASSWORD:}
+        ip: ${NACOS_DISCOVERY_IP:127.0.0.1}
+        register-enabled: true
+        health-indicator:
+          enabled: true
+
+server:
+  port: ${SERVER_PORT:8084}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never

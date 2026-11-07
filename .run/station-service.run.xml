@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="station-service" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <module name="station-service" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.smartchargepark.station.StationServiceApplication" />
+    <envs><env name="STATION_DB_URL" value="jdbc:mysql://127.0.0.1:3306/station_db?useUnicode=true&amp;characterEncoding=utf8&amp;serverTimezone=Asia/Shanghai&amp;allowPublicKeyRetrieval=true&amp;useSSL=false" /></envs>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

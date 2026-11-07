@@ -1,0 +1,108 @@
+spring:
+  application:
+    name: reservation-service
+  config:
+    import:
+      - optional:nacos:reservation-service.yaml?group=DEFAULT_GROUP&refreshEnabled=true
+  cloud:
+    sentinel:
+      eager: true
+      transport:
+        dashboard: ${SENTINEL_DASHBOARD:127.0.0.1:8858}
+        port: ${SENTINEL_TRANSPORT_PORT:8719}
+        client-ip: ${SENTINEL_CLIENT_IP:127.0.0.1}
+      log:
+        dir: ${SENTINEL_LOG_DIR:.runtime/logs/sentinel-client}
+    openfeign:
+      client:
+        config:
+          station-service:
+            connectTimeout: 2000
+            readTimeout: 3000
+            dismiss404: false
+          user-service:
+            connectTimeout: 2000
+            readTimeout: 3000
+            dismiss404: false
+    loadbalancer:
+      cache:
+        enabled: false
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        username: ${NACOS_USERNAME:}
+        password: ${NACOS_PASSWORD:}
+        group: DEFAULT_GROUP
+        refresh-enabled: true
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        username: ${NACOS_USERNAME:}
+        password: ${NACOS_PASSWORD:}
+        ip: ${NACOS_DISCOVERY_IP:127.0.0.1}
+        register-enabled: true
+        health-indicator:
+          enabled: true
+  datasource:
+    url: ${RESERVATION_DB_URL:jdbc:mysql://127.0.0.1:3306/reservation_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      read-only: false
+  flyway:
+    enabled: true
+  mvc:
+    problemdetails:
+      enabled: true
+
+reservation:
+  max-days: 7
+
+smartcharge:
+  experiment:
+    seata-rollback:
+      enabled: ${SEATA_ROLLBACK_EXPERIMENT:false}
+      pause-ms: ${SEATA_ROLLBACK_PAUSE_MS:0}
+
+seata:
+  enabled: true
+  application-id: ${spring.application.name}
+  tx-service-group: smartcharge_tx_group
+  enable-auto-data-source-proxy: true
+  data-source-proxy-mode: AT
+  config:
+    type: file
+  registry:
+    type: nacos
+    nacos:
+      application: seata-server
+      server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+      namespace: ""
+      group: SEATA_GROUP
+      username: ${NACOS_USERNAME:}
+      password: ${NACOS_PASSWORD:}
+  service:
+    vgroup-mapping:
+      smartcharge_tx_group: default
+
+feign:
+  sentinel:
+    enabled: true
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+
+server:
+  port: ${SERVER_PORT:8083}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never

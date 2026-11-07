@@ -3,7 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from './api'
 
-const loggedIn = ref(Boolean(localStorage.getItem('smartcharge-token')))
+const loggedIn = ref(false)
 const loginForm = reactive({ username: 'driver', password: '123456' })
 const displayName = ref(localStorage.getItem('smartcharge-name') || '')
 const loading = ref(false)
@@ -117,8 +117,18 @@ async function createReservation() {
   }
 }
 
-onMounted(() => {
-  if (loggedIn.value) loadStations()
+onMounted(async () => {
+  if (!localStorage.getItem('smartcharge-token')) return
+  try {
+    const user = await api.me()
+    displayName.value = user.displayName
+    localStorage.setItem('smartcharge-name', user.displayName)
+    loggedIn.value = true
+    await loadStations()
+  } catch (error) {
+    if (error.status === 401) logout()
+    else ElMessage.error(error.message)
+  }
 })
 </script>
 
@@ -126,7 +136,7 @@ onMounted(() => {
   <main class="page-shell">
     <section v-if="!loggedIn" class="login-card">
       <div class="brand-mark">SC</div>
-      <p class="eyebrow">第 1 周单体版 Demo</p>
+      <p class="eyebrow">停车与充电预约 Demo</p>
       <h1>SmartCharge Park</h1>
       <p class="subtitle">出发前查清站点信息，锁定合适的充电时段</p>
       <el-form label-position="top" @submit.prevent="login">

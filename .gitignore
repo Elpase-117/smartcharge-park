@@ -1,5 +1,8 @@
 # Java
 backend/target/
+station-service/target/
+reservation-service/target/
+gateway-service/target/
 *.log
 
 # Frontend
@@ -17,3 +20,33 @@ Thumbs.db
 .env
 application-local.yml
 
+# Middleware distributions and local runtime artifacts
+Week7/
+seata-server*/
+sessionStore/
+target/
+*.jar
+*.jfr
+*.credential.xml
+*.sql.bak
+
+# Repository-local runtime (never commit middleware, secrets, logs or caches)
+.runtime/
+
+# Generated artifacts across modules
+node_modules/
+dist/
+logs/
+coverage/
+.cache/
+*.pid
+*.dump
+*.tmp
+*.bak
+*.swp
+
+# Private local overrides
+application-local-secret.yml
+application-local-secret.yaml
+.env.local
+.env.*.local
