@@ -7,7 +7,7 @@
 - Windows 10/11 x64，使用系统自带的 Windows PowerShell 5.1。
 - 首次联网下载运行组件和构建依赖，建议预留至少 5 GB 空间。
 - 项目可以放在含中文或空格的目录中。
-- MySQL 若缺少 Microsoft VC++ Runtime，按提示安装官方组件。
+- MySQL 8.0 Windows 版依赖 Microsoft Visual C++ Runtime。多数 Windows 电脑可能已由其他软件安装；若 MySQL 因缺少 VCRUNTIME/MSVC 组件而无法启动，请安装 Microsoft 官方 Visual C++ Redistributable 后重试。
 
 ## 第一次使用
 
