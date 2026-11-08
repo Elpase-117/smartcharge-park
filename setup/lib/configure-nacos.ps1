@@ -76,6 +76,14 @@ function Configure-Nacos {
         }
         Save-Json $appReady @{username='smartcharge_app';role='SMARTCHARGE_APP';initialized=$true}
     }
+    # Nacos 3.3 normalizes batch listening's empty group/name to namespace-level wildcards.
+    $listenPermission=@{role='SMARTCHARGE_APP';resource='public:*:config/*';action='r'}
+    $listenExists=Invoke-Nacos '/v3/auth/permission' 'GET' $listenPermission $script:NacosToken
+    if($listenExists.code -ne 0){throw 'Could not verify the config-listener permission.'}
+    if(-not $listenExists.data){
+        $granted=Invoke-Nacos '/v3/auth/permission' 'POST' $listenPermission $script:NacosToken
+        if($granted.code -ne 0){throw 'Could not grant the config-listener read permission.'}
+    }
     # The default auth plugin may briefly retain the negative lookup performed
     # before first user creation. Wait for authentication instead of resetting it.
     Wait-Ready 'nacos' {try{$script:NacosAppToken=Nacos-Login 'smartcharge_app' $script:Secrets.nacosApp;return $true}catch{return $false}} 60

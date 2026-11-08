@@ -39,4 +39,33 @@ class CurrentUserServiceTest {
         when(client.current(anyString())).thenReturn(new CurrentUser(null, "", ""));
         assertThatThrownBy(() -> service.requireUserId("Bearer unit-token")).isInstanceOf(ResponseStatusException.class);
     }
+
+    @Test void acceptsGatewayHeadersOnlyAfterIndependentBearerValidation() {
+        when(client.current("Bearer unit-token")).thenReturn(new CurrentUser(2L, "第二用户", "DRIVER"));
+        assertThat(service.requireUserId("Bearer unit-token", "2", "DRIVER")).isEqualTo(2L);
+        verify(client).current("Bearer unit-token");
+    }
+    @Test void rejectsGatewayUserIdThatDiffersFromBearerIdentity() {
+        when(client.current("Bearer unit-token")).thenReturn(new CurrentUser(2L, "第二用户", "DRIVER"));
+        assertThatThrownBy(() -> service.requireUserId("Bearer unit-token", "1", "DRIVER"))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        e -> assertThat(e.getStatusCode().value()).isEqualTo(403));
+    }
+    @Test void rejectsGatewayRoleThatDiffersFromBearerIdentity() {
+        when(client.current("Bearer unit-token")).thenReturn(new CurrentUser(2L, "第二用户", "DRIVER"));
+        assertThatThrownBy(() -> service.requireUserId("Bearer unit-token", "2", "ADMIN"))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        e -> assertThat(e.getStatusCode().value()).isEqualTo(403));
+    }
+    @Test void directRequestWithoutGatewayHeadersStillUsesBearer() {
+        when(client.current("Bearer unit-token")).thenReturn(new CurrentUser(2L, "第二用户", "DRIVER"));
+        assertThat(service.requireUserId("Bearer unit-token", null, null)).isEqualTo(2L);
+        verify(client).current("Bearer unit-token");
+    }
+    @Test void forgedHeadersCannotAuthenticateDirectRequestWithoutBearer() {
+        assertThatThrownBy(() -> service.requireUserId(null, "2", "DRIVER"))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        e -> assertThat(e.getStatusCode().value()).isEqualTo(401));
+        verifyNoInteractions(client);
+    }
 }

@@ -15,9 +15,11 @@ public class ReservationController {
     }
     @PostMapping
     public ReservationResult create(@Valid @RequestBody ReservationRequest request,
-                                    @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
+                                    @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
+                                    @RequestHeader(value = "X-Authenticated-User-Id", required = false) String gatewayUserId,
+                                    @RequestHeader(value = "X-Authenticated-User-Role", required = false) String gatewayRole) {
         // Resolve the authenticated identity before opening the two-RM global transaction.
-        Long userId = users.requireUserId(authorization);
+        Long userId = users.requireUserId(authorization, gatewayUserId, gatewayRole);
         return service.create(request, userId);
     }
 }

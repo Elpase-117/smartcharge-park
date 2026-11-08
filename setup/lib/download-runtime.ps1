@@ -13,7 +13,7 @@ function Install-Runtimes {
     $manifest=Read-Json (Join-Path $script:Setup 'install-manifest.json')
     $verification=@()
     foreach($a in $manifest.artifacts){
-        if($a.archive -ne [IO.Path]::GetFileName($a.archive) -or $a.target -notin @('jdk','maven','node','mysql','nacos','seata','seata/compat/lib')){throw 'Invalid Runtime archive name or target.'}
+        if($a.archive -ne [IO.Path]::GetFileName($a.archive) -or $a.target -notin @('jdk','maven','node','mysql','nacos','seata','seata/compat/lib','skywalking/oap','skywalking/agent')){throw 'Invalid Runtime archive name or target.'}
         $uri=[uri]$a.url
         if($uri.Scheme -ne 'https' -or $uri.Host -notin @('github.com','nodejs.org','archive.apache.org','cdn.mysql.com','repo.maven.apache.org')){throw ('Unapproved artifact source: '+$a.name)}
         $length=@{'SHA256'=64;'SHA512'=128;'MD5'=32}[$a.algorithm]
@@ -55,6 +55,7 @@ function Install-Runtimes {
         if($actual -ne $a.checksum){throw ('Checksum mismatch: '+$a.name)}
         Write-Stage ($a.name+': '+$a.algorithm+' PASS ('+$action+')')
         $target=Runtime-Path $a.target
+        [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))
         if($a.type -eq 'jar'){
             [void][IO.Directory]::CreateDirectory($target)
             $dest=Join-Path $target $a.archive
@@ -85,5 +86,5 @@ function Install-Runtimes {
     if($node.Trim() -ne 'v22.23.2'){throw 'Unexpected private Node version.'}
     $mysql=Invoke-PrivateCommand (Runtime-Path 'mysql\bin\mysqld.exe') @('--version') $script:Project
     if($mysql.exit -ne 0){throw 'Private mysqld could not execute. If VCRUNTIME/MSVC is missing, install the Microsoft official Visual C++ Redistributable (may require UAC): https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist'}
-    Save-State 'installed-versions' @{jdk='Temurin 17.0.20.1+1';maven='3.9.16';node='22.23.2';npm=$manifest.npmVersion;mysql='8.0.46';nacos='3.3.0';seata='2.5.0';seataNacosClient='3.0.3';sentinel='embedded; rules restored locally; Dashboard not bundled';installedAt=(Get-Date -Format o)}
+    Save-State 'installed-versions' @{jdk='Temurin 17.0.20.1+1';maven='3.9.16';node='22.23.2';npm=$manifest.npmVersion;mysql='8.0.46';nacos='3.3.0';seata='2.5.0';seataNacosClient='3.0.3';sentinel='embedded; rules restored locally; Dashboard not bundled';skywalkingOap='10.1.0';skywalkingAgent='9.8.0';installedAt=(Get-Date -Format o)}
 }

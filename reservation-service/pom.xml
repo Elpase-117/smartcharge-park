@@ -12,6 +12,7 @@
     <artifactId>reservation-service</artifactId>
     <name>SmartCharge Park reservation-service</name>
     <dependencies>
+        <dependency><groupId>com.smartchargepark</groupId><artifactId>common-web</artifactId></dependency>
         <dependency><groupId>org.flywaydb</groupId><artifactId>flyway-core</artifactId></dependency>
         <dependency><groupId>org.flywaydb</groupId><artifactId>flyway-mysql</artifactId></dependency>
         <dependency>

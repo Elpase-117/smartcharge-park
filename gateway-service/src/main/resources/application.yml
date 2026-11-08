@@ -46,6 +46,11 @@ spring:
 server:
   port: ${SERVER_PORT:8084}
 
+smartcharge:
+  gateway:
+    authentication:
+      timeout-ms: ${GATEWAY_AUTH_TIMEOUT_MS:2000}
+
 management:
   endpoints:
     web:

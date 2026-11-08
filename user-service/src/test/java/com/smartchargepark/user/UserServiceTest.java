@@ -61,7 +61,8 @@ class UserServiceTest {
     @Test void rejectsWrongPassword() {
         var response = http.postForEntity("/api/auth/login", new LoginRequest("driver", "wrong"), Map.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(response.getBody()).containsEntry("detail", "用户名或密码错误");
+        assertThat(response.getBody()).containsEntry("status", 401).containsEntry("code", "AUTH_REQUIRED")
+                .containsEntry("message", "请先登录或重新登录").containsEntry("path", "/api/auth/login");
     }
 
     @Test void rejectsUnknownAccountAndEmptyCredentials() {

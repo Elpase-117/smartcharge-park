@@ -1,4 +1,4 @@
-. "$PSScriptRoot\common.ps1"
+. "$PSScriptRoot\configure-skywalking.ps1"
 function Check-Installation {
     $checks=@()
     foreach($name in @('mysql','nacos','seata')+$script:Services+@('frontend')){
@@ -49,6 +49,7 @@ function Check-Installation {
     if(-not $baseFound){throw 'Frontend build does not contain the configured Gateway API base.'}
     $counts=Invoke-MySql 'SELECT (SELECT COUNT(*) FROM user_db.app_user),(SELECT COUNT(*) FROM station_db.station),(SELECT COUNT(*) FROM reservation_db.reservation),(SELECT COUNT(*) FROM order_db.demo_order);'
     $result=[ordered]@{status='PASS';checkedAt=(Get-Date -Format o);infrastructure=$checks;databases=$dbState;demoAccounts=$accounts;countsUserStationReservationOrder=$counts;gatewayStations='PASS';gatewayMe='PASS';gatewayAvailability='PASS';frontendHtml='PASS';frontendApiBase='http://127.0.0.1:8084/api';sentinelDashboard='not bundled; not a core dependency';sentinelRules=$readback;automaticReservationPost=$false}
+    $result.skywalking=Check-SkyWalking
     Save-State 'health-check' $result
     Write-Stage 'Health Check: PASS (no reservation or order was created)'
     $result

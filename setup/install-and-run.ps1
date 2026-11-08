@@ -27,6 +27,7 @@ try{
     Write-Stage '[7/10] Build Java and Frontend with private tools'
     Build-Application
     Write-Stage '[8/10] Start services and Frontend; restore Sentinel rules'
+    Start-SkyWalking
     Start-Applications
     Write-Stage '[9/10] Health Check'
     $null=Check-Installation
@@ -36,6 +37,7 @@ try{
     Write-Host 'Frontend: http://127.0.0.1:5173'
     Write-Host 'Gateway: http://127.0.0.1:8084/api'
     Write-Host 'Nacos Console: http://127.0.0.1:8081 (credentials in .runtime/secrets; never printed)'
+    Write-Host 'SkyWalking UI: http://127.0.0.1:8080'
     Write-Host 'Sentinel: embedded client; approved rules restored; Dashboard not bundled'
     Write-Host ('Logs: '+(Runtime-Path 'logs'))
     if(-not $NoBrowser){Start-Process 'http://127.0.0.1:5173'}

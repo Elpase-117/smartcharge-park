@@ -24,6 +24,10 @@ spring:
             connectTimeout: 2000
             readTimeout: 3000
             dismiss404: false
+          order-service:
+            connectTimeout: 2000
+            readTimeout: 3000
+            dismiss404: false
     loadbalancer:
       cache:
         enabled: false

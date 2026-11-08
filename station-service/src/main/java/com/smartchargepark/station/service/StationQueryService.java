@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import org.springframework.web.server.ResponseStatusException;
+import com.smartchargepark.common.web.BusinessException;
 
 import java.util.List;
 
@@ -26,7 +26,7 @@ public class StationQueryService {
     public Station detail(Long id) {
         Station station = stationMapper.findById(id);
         if (station == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "站点不存在");
+            throw new BusinessException(HttpStatus.NOT_FOUND, "STATION_NOT_FOUND", "站点不存在");
         }
         return station;
     }

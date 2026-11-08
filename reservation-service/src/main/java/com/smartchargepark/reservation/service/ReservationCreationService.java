@@ -4,11 +4,13 @@ import com.smartchargepark.reservation.config.ReservationProperties;
 import com.smartchargepark.reservation.dto.*;
 import com.smartchargepark.reservation.model.Reservation;
 import com.smartchargepark.reservation.experiment.RollbackExperimentHook;
+import feign.FeignException;
 import org.apache.seata.spring.annotation.GlobalTransactional;
 import org.apache.seata.core.context.RootContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
@@ -48,7 +50,19 @@ public class ReservationCreationService {
         OrderCreateRequest orderRequest = new OrderCreateRequest(reservation.getId(), reservation.getUserId(),
                 reservation.getStationId(), station.parkingFee().add(station.serviceFee()));
         // No success-shaped fallback: transport/business failures propagate to the global boundary.
-        OrderResult order = orders.create(orderRequest);
+        OrderResult order;
+        try {
+            order = orders.create(orderRequest);
+        } catch (FeignException failure) {
+            // Log classification only: raw Feign messages can include request/body details.
+            log.warn("Order service call failed: status={} type={} cause={}", failure.status(),
+                    failure.getClass().getSimpleName(),
+                    failure.getCause() == null ? "none" : failure.getCause().getClass().getSimpleName());
+            HttpStatusCode status = failure.status() >= 400 && failure.status() < 500
+                    ? HttpStatusCode.valueOf(failure.status()) : HttpStatus.SERVICE_UNAVAILABLE;
+            // Still an unchecked failure escaping the global transaction; never fabricate an order.
+            throw new ResponseStatusException(status, "订单请求失败，请稍后重试");
+        }
         if (order == null || order.id() == null || !reservation.getId().equals(order.reservationId())
                 || !"PENDING_PAYMENT".equals(order.status()) || order.estimatedAmount() == null
                 || order.estimatedAmount().compareTo(orderRequest.estimatedAmount()) != 0) {

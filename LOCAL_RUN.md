@@ -97,10 +97,10 @@ Start-Seata
 在项目根目录构建：
 
 ```powershell
-mvn clean test package
+mvn clean test install
 ```
 
-按 user → station → order → reservation → Gateway 启动。为各服务分别打开已配置环境的终端，在项目根目录执行对应的一行：
+上述命令将 `common-web` 等构建产物安装到本地 Maven 仓库，供下方按模块启动解析公共依赖；不涉及远程发布。按 user → station → order → reservation → Gateway 启动。为各服务分别打开已配置环境的终端，在项目根目录执行对应的一行：
 
 ```powershell
 mvn -pl user-service spring-boot:run
@@ -124,6 +124,8 @@ smartcharge.experiment.seata-rollback.pause-ms=0
 ## 4. 配置与 Sentinel 规则
 
 预约配置从 Nacos 的 `public / DEFAULT_GROUP / reservation-service.yaml` 导入并刷新。查询和提交按实际生效的 `reservation.max-days` 校验；首次安装只在配置不存在时写入初始值 7，以后保留已有值。
+
+`reservation.max-days` 支持通过 Nacos 动态刷新，无需重启 reservation-service。
 
 Sentinel 不要求启动 Dashboard。已确认的保护规则为：
 
@@ -164,7 +166,39 @@ Gateway 只显式转发 `/api/auth/**`、`/api/stations/**`、`/api/reservations
 
 登录采用 `POST /api/auth/login` 的 `username/password` 字段及 Bearer Token；`GET /api/auth/me` 返回 `userId/displayName/role`。预约先通过 UserFeign 确认身份，再由 reservation-service 开启 Seata 全局事务并经 OrderFeign 创建订单。两个写 RM 为 reservation 与 order；用户和站点查询不增加写分支。
 
+公开接口为 `POST /api/auth/login`、`GET /api/stations`、`GET /api/stations/{id}`、`GET /api/reservations/availability`；其余已匹配 `/api` 业务路由默认需要认证，包括 `GET /api/auth/me` 与 `POST /api/reservations`。OPTIONS 不要求 Token，仍按原 CORS 白名单处理。
+
+Gateway 通过服务发现直接调用 user-service 校验 Token，不递归访问自身。缺失、格式错误或无效 Token 返回 401；身份服务不可用、超时或返回无效身份时返回 503。认证调用总超时默认 2000ms，可用 `GATEWAY_AUTH_TIMEOUT_MS` 调整。客户端传入的 `X-Authenticated-User-Id` / `X-Authenticated-User-Role` 会先被移除，验证成功后重新注入。预约服务保留 Bearer + UserFeign 校验；身份 Header 不一致返回 403，无 Header 的直连请求仍须有效 Bearer。
+
 已有显式业务验证入口 [scripts/test-flow.ps1](scripts/test-flow.ps1) 会登录、查询并创建一笔预约及待支付订单，执行后会新增业务数据。只需检查健康状态时，不必运行这个写入脚本。
+
+## 6. SkyWalking 本地调试
+
+一键运行环境自动启动 OAP/UI，并为五个 Java 应用挂载 Agent。固定版本为 OAP/UI 10.1.0、Java Agent 9.8.0；本地开发存储使用 `.runtime/data/skywalking/oap.mv.db`。OAP gRPC/HTTP 为 11800/12800，UI 为 <http://127.0.0.1:8080>。版本选择和校验来源见安装清单。
+
+共享 `.run` 保持普通开发启动方式，不强制依赖 Agent 或 `.runtime`。需要追踪 IDEA 调试时，先完成一次一键安装，再停止整套私有进程，按第2节启动相应基础设施，然后在项目根目录启动观测组件：
+
+```powershell
+. .\setup\lib\configure-skywalking.ps1
+Start-SkyWalking
+```
+
+复制所需服务的运行配置为本地配置（不保存到共享 `.run`），在 **VM options** 添加下列参数，将服务名替换为 `user-service`、`station-service`、`reservation-service`、`order-service` 或 `gateway-service`：
+
+```text
+-javaagent:"$PROJECT_DIR$/.runtime/skywalking/agent/skywalking-agent.jar"
+-Dskywalking.agent.service_name=reservation-service
+-Dskywalking.collector.backend_service=127.0.0.1:11800
+-Dskywalking.logging.dir="$PROJECT_DIR$/.runtime/logs/skywalking-agent/reservation-service"
+```
+
+也可用 `SW_AGENT_NAME` 与 `SW_AGENT_COLLECTOR_BACKEND_SERVICES` 设置服务名及 OAP 地址。Agent 仅作启动期增强，不打入业务 JAR，不需要新增业务 SDK 依赖。安装流程已启用官方 Gateway4.x 和 SpringMVC6.x 可选插件；不要同时启用独立 WebFlux 插件来追踪 Gateway。
+
+一键启动明确关闭 HTTP Header、请求参数及 JDBC SQL 参数值采集，避免保存 Bearer 和密码。保持这些设置，不为排障开启敏感字段采集。Agent 的可选 async-profiler 探测在此 OAP 组合下会自动禁用；本次只验证链路追踪，不包含性能剖析。
+
+在 UI 的 General Service → Topology 查看实际调用关系；Trace 中按真实 Trace ID 查询。先看错误标记和总耗时，再展开 Feign Exit、对应服务 Entry 和 JDBC Span，结合服务源码、同时间日志排查。根 Entry 含下游耗时，不能将其最长直接等同根因。全局拓扑也包含健康探测流量及 MySQL 虚拟节点，应与单条业务 Trace 区分。
+
+结束调试时先正常停止 IDEA 进程，再使用 `setup\stop-all.cmd` 停止它管理的私有组件。该入口只停止通过 PID、启动时间、路径及命令行身份核验的进程；不会停止不归其管理的 IDEA 实例。
 
 ## 常见开发问题
 

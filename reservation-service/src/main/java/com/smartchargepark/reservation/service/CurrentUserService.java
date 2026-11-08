@@ -3,16 +3,23 @@ package com.smartchargepark.reservation.service;
 import com.smartchargepark.reservation.client.UserFeignClient;
 import com.smartchargepark.reservation.dto.CurrentUser;
 import feign.FeignException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class CurrentUserService {
+    private static final Logger log = LoggerFactory.getLogger(CurrentUserService.class);
     private final UserFeignClient users;
     public CurrentUserService(UserFeignClient users) { this.users = users; }
 
     public Long requireUserId(String authorization) {
+        return requireUserId(authorization, null, null);
+    }
+
+    public Long requireUserId(String authorization, String gatewayUserId, String gatewayRole) {
         if (authorization == null || !authorization.startsWith("Bearer ") || authorization.length() <= 7) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
         }
@@ -28,6 +35,13 @@ public class CurrentUserService {
         if (user == null || user.userId() == null || user.userId() <= 0) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "用户服务未返回有效身份");
         }
+        // These headers never replace Bearer verification, including when the service is accessed directly.
+        if ((gatewayUserId != null && !user.userId().toString().equals(gatewayUserId))
+                || (gatewayRole != null && !gatewayRole.equals(user.role()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "网关身份与登录身份不一致");
+        }
+        log.info("[GatewayIdentity] verified=true userId={} role={} gatewayHeaders={}",
+                user.userId(), user.role(), gatewayUserId == null && gatewayRole == null ? "absent" : "present");
         return user.userId();
     }
 }

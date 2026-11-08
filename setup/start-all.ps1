@@ -12,6 +12,7 @@ try{
     Start-MySql
     Start-Nacos;Configure-Nacos
     Start-Seata
+    Start-SkyWalking
     Start-Applications
     $null=Check-Installation
     Write-Host 'SmartCharge Park start: PASS (no download, build or database initialization)'

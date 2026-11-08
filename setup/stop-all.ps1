@@ -6,7 +6,7 @@ try{
     if(-not $InstallerOwnsLock){Enter-OperationLock}
     if(Test-Path -LiteralPath (Runtime-Path 'secrets\credentials.json')){$script:Secrets=Read-Json (Runtime-Path 'secrets\credentials.json')}
     $result=@()
-    foreach($name in @('frontend','gateway-service','reservation-service','order-service','station-service','user-service','seata','nacos','mysql')){
+    foreach($name in @('frontend','gateway-service','reservation-service','order-service','station-service','user-service','skywalking-ui','skywalking-oap','seata','nacos','mysql')){
         $owned=Get-OwnedProcess $name
         $file=Runtime-Path ('pids\'+$name+'.json')
         if($null -eq $owned){if(Test-Path -LiteralPath $file){Remove-Item -LiteralPath $file -Force};continue}

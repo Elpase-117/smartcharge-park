@@ -27,6 +27,7 @@
 - 预约日期、时段和剩余模拟容量查询，以及容量检查与并发冲突控制。
 - 通过 Gateway 提交已登录用户的预约，跨服务写入预约和待支付订单。
 - Nacos 注册发现与预约配置刷新、Sentinel 服务保护、Seata AT 全局提交及受控回滚验证。
+- SkyWalking Java Agent 覆盖五个 Java 应用，可查看同一请求的跨服务 Trace、Feign 调用与拓扑。
 
 预约身份由 Bearer Token 对应的真实用户确定，客户端伪造的 userId 不作为身份依据。Token 为随机不透明令牌；新登录替换同一用户的旧令牌，不影响其他用户。
 
@@ -55,9 +56,14 @@ flowchart TD
 | station-service | station_db；站点列表、搜索和详情 |
 | reservation-service | reservation_db；预约、容量检查和全局事务编排 |
 | order-service | order_db；内部订单创建和本地事务 |
-| gateway-service | 无业务数据库；显式路由、CORS、访问日志和响应头 |
+| gateway-service | 无业务数据库；显式路由、认证入口、CORS、访问日志和响应头 |
+| common-web | 公共 Web 库；MVC 统一错误响应与异常处理，不是独立微服务 |
+
+四个业务服务通过 Spring Boot 自动配置复用 `common-web`，错误统一为 `status/code/message/path`，成功响应保持原业务 DTO。Gateway 继续使用自身的 Reactive 认证错误处理。
 
 Gateway 通过 Nacos 服务发现转发 `/api/auth/**`、`/api/stations/**`、`/api/reservations/**`，没有公开订单路由。浏览器业务请求统一访问 `http://127.0.0.1:8084/api`。
+
+Gateway 对保护接口通过负载均衡 WebClient 调用 user-service 验证不透明 Bearer Token，清除客户端同名身份 Header 后注入真实用户 ID 与角色。预约服务仍通过 UserFeign 二次确认身份，并核对传入身份是否一致；直连业务服务不能仅凭身份 Header 绕过认证。
 
 采用 Database per Service 与 Flyway per Service：各服务管理自己的 Schema 和迁移。首次安装只准备空 Schema，服务正常启动时由 Flyway 建表、初始化演示数据或执行升级。
 
@@ -71,6 +77,7 @@ Gateway 通过 Nacos 服务发现转发 `/api/auth/**`、`/api/stations/**`、`/
 | 微服务 | Spring Cloud 2025.0.0、Spring Cloud Alibaba 2025.0.0.0、Gateway、OpenFeign |
 | 服务与配置管理 | Nacos Server 3.3.0 |
 | 事务与服务保护 | Seata AT 2.5.0、Sentinel 1.8.9 |
+| 链路追踪 | SkyWalking OAP/UI 10.1.0、Java Agent 9.8.0；本地 H2 文件存储 |
 | 数据 | MySQL 8、MyBatis-Plus、Flyway |
 | 前端 | Vue 3、Element Plus、Vite |
 | 构建 | Maven 多模块、npm 锁定依赖 |
@@ -81,4 +88,4 @@ Sentinel 采用嵌入式客户端及启动恢复规则，不捆绑 Dashboard。�
 
 站点名称、地址、充电类型、功率、公开价格和停车政策来自公开页面；空闲数量与页面价格仅代表采集时点快照。项目未接入地图或运营商实时接口。公开评价用于分析导航、入口、占位、功率、收费等问题，不作为本平台原生评论或实际访谈记录。
 
-预约容量、预约记录、待支付订单及估算金额为演示业务数据，不代表现场物理车位或设备保证可用。当前闭环止于待支付订单；真实支付、二维码核销、充电全过程、最终结算、运营 Dashboard，以及 Redis、RocketMQ、SkyWalking 尚未接入。
+预约容量、预约记录、待支付订单及估算金额为演示业务数据，不代表现场物理车位或设备保证可用。当前闭环止于待支付订单；真实支付、二维码核销、充电全过程、最终结算、运营 Dashboard，以及 Redis、RocketMQ 尚未接入。

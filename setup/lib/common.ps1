@@ -7,7 +7,7 @@ $script:Project=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..')).TrimEn
 $script:Runtime=Join-Path $script:Project '.runtime'
 $script:Setup=Join-Path $script:Project 'setup'
 $script:Services=@('user-service','station-service','order-service','reservation-service','gateway-service')
-$script:Ports=@{'mysql'=@(3306);'nacos'=@(8848,8081,9848,9849);'seata'=@(8091);'user-service'=@(8086);'station-service'=@(8082);'order-service'=@(8085);'reservation-service'=@(8083,8719);'gateway-service'=@(8084);'frontend'=@(5173)}
+$script:Ports=@{'mysql'=@(3306);'nacos'=@(8848,8081,9848,9849);'seata'=@(8091);'user-service'=@(8086);'station-service'=@(8082);'order-service'=@(8085);'reservation-service'=@(8083,8719);'gateway-service'=@(8084);'frontend'=@(5173);'skywalking-oap'=@(11800,12800);'skywalking-ui'=@(8080)}
 
 function Write-Utf8([string]$Path,[string]$Text){[IO.File]::WriteAllText($Path,$Text,(New-Object Text.UTF8Encoding $false))}
 function Save-Json([string]$Path,$Object){Write-Utf8 $Path ($Object|ConvertTo-Json -Depth 18)}

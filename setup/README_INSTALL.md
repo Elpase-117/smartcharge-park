@@ -1,6 +1,6 @@
 # Windows 安装与运行
 
-本文面向没有开发环境的 Windows 用户。无需预装 IDEA、Git、Java、Maven、Node.js、npm、MySQL、Nacos 或 Seata。
+本文面向没有开发环境的 Windows 用户。无需预装 IDEA、Git、Java、Maven、Node.js、npm、MySQL、Nacos、Seata 或 SkyWalking。
 
 ## 运行条件
 
@@ -14,6 +14,8 @@
 在项目文件夹中双击 `setup\install-and-run.cmd`，等待出现 `SmartCharge Park installation: PASS`。
 
 安装器会检查端口、下载固定版本组件并核对校验值，在项目私有 `.runtime` 中准备数据库与服务，随后构建并启动应用。安装器只创建四个空 Schema，业务表和演示数据由各服务自己的 Flyway 管理。
+
+安装器同时准备 SkyWalking OAP/UI 和 Java Agent，为五个 Java 应用采集链路。SkyWalking UI 为 <http://127.0.0.1:8080>；日志、配置和本地 H2 追踪数据均保存在 `.runtime`。停止后数据保留，后续启动复用已有组件，不重新下载。
 
 全部健康检查通过后，浏览器打开 <http://127.0.0.1:5173>。若浏览器没有打开，可手动访问该地址。
 
@@ -52,10 +54,14 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\setup\health-check.ps1
 | Nacos 控制台 | <http://127.0.0.1:8081> |
 | Nacos API / 通信 | 8848、9848、9849 |
 | MySQL / Seata | 3306 / 8091 |
+| SkyWalking UI | <http://127.0.0.1:8080> |
+| SkyWalking OAP gRPC / HTTP | 11800 / 12800 |
 | user / station / reservation / order | 8086 / 8082 / 8083 / 8085 |
 | Sentinel 客户端通信 | 8719 |
 
 Sentinel Dashboard 不作为运行前提；启动流程会恢复现有客户端规则，并在健康检查中回读。
+
+健康检查也会核验 OAP、UI、五个应用的 Agent 启动参数和已上报服务名。完整业务 Trace 可在 UI 的 General Service → Trace 中查询；正常健康检查不会创建预约来生成交易链路。SkyWalking 使用本机课程演示配置，不应将 UI 暴露到公网。
 
 ## 数据、凭据和日志
 

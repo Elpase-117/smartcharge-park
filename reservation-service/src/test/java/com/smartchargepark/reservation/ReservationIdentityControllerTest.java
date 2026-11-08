@@ -18,16 +18,16 @@ class ReservationIdentityControllerTest {
             + "\",\"timeSlot\":\"19:00-20:00\",\"userId\":999}";
 
     @Test void usesAuthenticatedIdentityAndIgnoresClientSuppliedUserId() throws Exception {
-        when(users.requireUserId("Bearer unit-token")).thenReturn(2L);
+        when(users.requireUserId("Bearer unit-token", null, null)).thenReturn(2L);
         var mvc = MockMvcBuilders.standaloneSetup(new ReservationController(creation, users)).build();
         mvc.perform(post("/api/reservations").contentType("application/json")
                 .header("Authorization", "Bearer unit-token").content(body)).andExpect(status().isOk());
         var sequence = inOrder(users, creation);
-        sequence.verify(users).requireUserId("Bearer unit-token");
+        sequence.verify(users).requireUserId("Bearer unit-token", null, null);
         sequence.verify(creation).create(any(), eq(2L));
     }
     @Test void missingIdentityCannotEnterGlobalTransaction() throws Exception {
-        when(users.requireUserId(null)).thenThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+        when(users.requireUserId(null, null, null)).thenThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED));
         var mvc = MockMvcBuilders.standaloneSetup(new ReservationController(creation, users)).build();
         mvc.perform(post("/api/reservations").contentType("application/json").content(body))
                 .andExpect(status().isUnauthorized());

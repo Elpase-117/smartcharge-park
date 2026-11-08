@@ -1,4 +1,4 @@
-. "$PSScriptRoot\common.ps1"
+. "$PSScriptRoot\configure-skywalking.ps1"
 function Invoke-BuildStep([string]$Exe,[string[]]$Arguments,[string]$WorkingDirectory,[string]$LogName){
     $log=Runtime-Path ('logs\'+$LogName)
     Push-Location -LiteralPath $WorkingDirectory
@@ -44,7 +44,9 @@ function Start-Applications {
         }
         $clientHome=Runtime-Path ('data\client-'+$name)
         [void][IO.Directory]::CreateDirectory($clientHome)
-        $arguments=@('-Xms64m','-Xmx320m','-Dfile.encoding=UTF-8',('-Duser.home='+$clientHome),'-jar',(Runtime-Path ('app\'+$name+'.jar')))
+        $envs.SW_AGENT_NAME=$name
+        $envs.SW_AGENT_COLLECTOR_BACKEND_SERVICES='127.0.0.1:11800'
+        $arguments=@('-Xms64m','-Xmx320m','-Dfile.encoding=UTF-8',('-Duser.home='+$clientHome))+@(Get-SkyWalkingAgentArguments $name)+@('-jar',(Runtime-Path ('app\'+$name+'.jar')))
         if(-not (Test-Path -LiteralPath (Runtime-Path ('app\'+$name+'.jar')))){throw ('Built application missing: '+$name+'. Run install-and-run.')}
         Start-Owned $name (Runtime-Path 'jdk\bin\java.exe') $arguments $envs
         $port=$script:Ports[$name][0]
