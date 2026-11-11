@@ -1,6 +1,7 @@
 package com.smartchargepark.reservation;
 
 import com.smartchargepark.common.web.CommonWebExceptionHandler;
+import com.smartchargepark.reservation.config.ReservationProperties;
 import com.smartchargepark.reservation.client.StationFeignFallbackFactory;
 import com.smartchargepark.reservation.controller.ReservationController;
 import com.smartchargepark.reservation.controller.ReservationResourceController;
@@ -28,7 +29,8 @@ class ReservationCommonWebContractTest {
     private final ReservationCreationService creation = mock(ReservationCreationService.class);
     private final ReservationAvailabilityService availability = mock(ReservationAvailabilityService.class);
     private final org.springframework.test.web.servlet.MockMvc mvc = MockMvcBuilders
-            .standaloneSetup(new ReservationController(creation, users), new ReservationResourceController(availability))
+            .standaloneSetup(new ReservationController(creation, users),
+                    new ReservationResourceController(availability, new ReservationProperties()))
             .setControllerAdvice(new CommonWebExceptionHandler()).build();
     private final LocalDate date = LocalDate.now().plusDays(1);
     private final String body = "{\"stationId\":4,\"reservationDate\":\"" + date + "\",\"timeSlot\":\"19:00-20:00\"}";

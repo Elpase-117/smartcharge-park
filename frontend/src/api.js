@@ -24,6 +24,7 @@ export const api = {
   me: () => request('/auth/me'),
   stations: (keyword = '') => request(`/stations?keyword=${encodeURIComponent(keyword)}`),
   station: (id) => request(`/stations/${id}`),
+  reservationRules: () => request('/reservations/rules', { cache: 'no-store' }),
   availability: (id, date) => request(`/reservations/availability?stationId=${id}&date=${date}`),
   reserve: (payload) => request('/reservations', { method: 'POST', body: JSON.stringify(payload) })
 }

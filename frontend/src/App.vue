@@ -12,6 +12,10 @@ const stations = ref([])
 const selected = ref(null)
 const availability = ref([])
 const result = ref(null)
+const resultVisible = ref(false)
+const reservationMaxDays = ref(null)
+const rulesLoading = ref(false)
+let rulesRequestId = 0
 
 function formatLocalDate(date) {
   const year = date.getFullYear()
@@ -36,9 +40,44 @@ function statusText(station) {
 }
 
 function disabledReservationDate(date) {
+  if (reservationMaxDays.value === null) return true
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  return date.getTime() < today.getTime()
+  const lastDay = new Date(today)
+  lastDay.setDate(lastDay.getDate() + reservationMaxDays.value)
+  const day = new Date(date)
+  day.setHours(0, 0, 0, 0)
+  return Number.isNaN(day.getTime()) || day < today || day > lastDay
+}
+
+async function loadReservationRules() {
+  const requestId = ++rulesRequestId
+  rulesLoading.value = true
+  reservationMaxDays.value = null
+  availability.value = []
+  try {
+    const rules = await api.reservationRules()
+    if (requestId !== rulesRequestId) return
+    if (!Number.isInteger(rules.maxDays) || rules.maxDays < 0) {
+      throw new Error('预约日期规则暂不可用，请重新打开站点重试')
+    }
+    reservationMaxDays.value = rules.maxDays
+    if (disabledReservationDate(new Date(`${reservation.reservationDate}T00:00:00`))) {
+      const defaultDate = new Date()
+      if (rules.maxDays > 0) defaultDate.setDate(defaultDate.getDate() + 1)
+      reservation.reservationDate = formatLocalDate(defaultDate)
+      reservation.timeSlot = ''
+    }
+    if (selected.value) await loadAvailability()
+  } catch (error) {
+    if (requestId !== rulesRequestId) return
+    reservationMaxDays.value = null
+    reservation.timeSlot = ''
+    availability.value = []
+    ElMessage.error(error.message)
+  } finally {
+    if (requestId === rulesRequestId) rulesLoading.value = false
+  }
 }
 
 async function login() {
@@ -50,6 +89,7 @@ async function login() {
     displayName.value = data.displayName
     loggedIn.value = true
     await loadStations()
+    await loadReservationRules()
     ElMessage.success('登录成功')
   } catch (error) {
     ElMessage.error(error.message)
@@ -64,6 +104,7 @@ function logout() {
   loggedIn.value = false
   selected.value = null
   result.value = null
+  resultVisible.value = false
 }
 
 async function loadStations() {
@@ -78,16 +119,22 @@ async function loadStations() {
 }
 
 async function openStation(station) {
+  resultVisible.value = false
   result.value = null
   selected.value = await api.station(station.id)
   reservation.timeSlot = ''
-  await loadAvailability()
+  await loadReservationRules()
 }
 
 async function loadAvailability() {
-  if (!selected.value || !reservation.reservationDate) return
+  if (!selected.value || !reservation.reservationDate ||
+      disabledReservationDate(new Date(`${reservation.reservationDate}T00:00:00`))) return
+  const stationId = selected.value.id
+  const date = reservation.reservationDate
   try {
-    availability.value = await api.availability(selected.value.id, reservation.reservationDate)
+    const items = await api.availability(stationId, date)
+    if (selected.value?.id !== stationId || reservation.reservationDate !== date) return
+    availability.value = items
     if (reservation.timeSlot && !availability.value.some(item => item.timeSlot === reservation.timeSlot)) {
       reservation.timeSlot = ''
     }
@@ -97,6 +144,7 @@ async function loadAvailability() {
 }
 
 async function createReservation() {
+  if (loading.value || resultVisible.value || rulesLoading.value || reservationMaxDays.value === null) return
   if (!reservation.timeSlot) {
     ElMessage.warning('请选择预约时段')
     return
@@ -108,8 +156,8 @@ async function createReservation() {
       reservationDate: reservation.reservationDate,
       timeSlot: reservation.timeSlot
     })
+    resultVisible.value = true
     await loadAvailability()
-    ElMessage.success('预约已创建，并生成待支付订单')
   } catch (error) {
     ElMessage.error(error.message)
   } finally {
@@ -125,6 +173,7 @@ onMounted(async () => {
     localStorage.setItem('smartcharge-name', user.displayName)
     loggedIn.value = true
     await loadStations()
+    await loadReservationRules()
   } catch (error) {
     if (error.status === 401) logout()
     else ElMessage.error(error.message)
@@ -233,6 +282,7 @@ onMounted(async () => {
               value-format="YYYY-MM-DD"
               :editable="false"
               :clearable="false"
+              :disabled="rulesLoading || reservationMaxDays === null"
               :disabled-date="disabledReservationDate"
               @change="loadAvailability"
             />
@@ -252,24 +302,30 @@ onMounted(async () => {
             <p v-if="selectedAvailability" class="capacity-note">
               已检查 Demo 预约容量，当前剩余 {{ selectedAvailability.remaining }} / {{ selectedAvailability.capacity }} 个名额。
             </p>
-            <el-button type="primary" :loading="loading" class="full-button" @click="createReservation">
+            <el-button type="primary" :loading="loading" :disabled="rulesLoading || reservationMaxDays === null || resultVisible" class="full-button" @click="createReservation">
               创建预约与待支付订单
             </el-button>
           </section>
 
-          <el-result v-if="result" icon="success" title="预约容量已锁定" sub-title="已生成 Demo 待支付订单；该结果仅保证系统内预约容量，不代表现场物理车位或设备状态">
-            <template #extra>
-              <div class="result-grid">
-                <span>预约编号</span><strong>{{ result.reservationId }}</strong>
-                <span>订单号</span><strong>{{ result.orderNo }}</strong>
-                <span>预约时段</span><strong>{{ result.reservationDate }} {{ result.timeSlot }}</strong>
-                <span>订单状态</span><strong>待支付</strong>
-                <span>演示金额</span><strong>¥{{ result.estimatedAmount }}</strong>
-              </div>
-            </template>
-          </el-result>
         </template>
       </el-drawer>
+
+      <el-dialog v-model="resultVisible" title="预约已创建" width="min(480px, 94vw)" append-to-body :close-on-click-modal="false">
+        <template v-if="result">
+          <p class="capacity-note">已生成 Demo 待支付订单；当前结果仅代表系统内预约容量，不代表现场物理车位或设备状态，尚未进行真实支付。</p>
+          <div class="result-grid">
+            <span>预约编号</span><strong>{{ result.reservationId }}</strong>
+            <span>订单号</span><strong>{{ result.orderNo }}</strong>
+            <span>预约日期</span><strong>{{ result.reservationDate }}</strong>
+            <span>预约时段</span><strong>{{ result.timeSlot }}</strong>
+            <span>订单状态</span><strong>待支付</strong>
+            <span>演示金额</span><strong>¥{{ Number(result.estimatedAmount).toFixed(2) }}</strong>
+          </div>
+        </template>
+        <template #footer>
+          <el-button type="primary" @click="resultVisible = false">关闭</el-button>
+        </template>
+      </el-dialog>
     </template>
   </main>
 </template>
