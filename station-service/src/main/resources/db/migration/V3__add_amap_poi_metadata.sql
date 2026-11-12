@@ -1,0 +1,10 @@
+ALTER TABLE station
+    ADD COLUMN amap_poi_id VARCHAR(32) NULL,
+    ADD COLUMN amap_name VARCHAR(255) NULL,
+    ADD COLUMN amap_address VARCHAR(512) NULL,
+    ADD COLUMN longitude DECIMAL(10,7) NULL,
+    ADD COLUMN latitude DECIMAL(10,7) NULL,
+    ADD COLUMN district VARCHAR(128) NULL,
+    ADD COLUMN adcode VARCHAR(12) NULL,
+    ADD COLUMN amap_type VARCHAR(255) NULL,
+    ADD COLUMN amap_synced_at DATETIME NULL;

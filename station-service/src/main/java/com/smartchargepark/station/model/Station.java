@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @TableName("station")
 public class Station {
@@ -34,6 +35,34 @@ public class Station {
     private String snapshotTime;
     private String dataNotice;
     private String status;
+    private String amapPoiId;
+    private String amapName;
+    private String amapAddress;
+    private BigDecimal longitude;
+    private BigDecimal latitude;
+    private String district;
+    private String adcode;
+    private String amapType;
+    private LocalDateTime amapSyncedAt;
+
+    public String getAmapPoiId() { return amapPoiId; }
+    public void setAmapPoiId(String value) { amapPoiId = value; }
+    public String getAmapName() { return amapName; }
+    public void setAmapName(String value) { amapName = value; }
+    public String getAmapAddress() { return amapAddress; }
+    public void setAmapAddress(String value) { amapAddress = value; }
+    public BigDecimal getLongitude() { return longitude; }
+    public void setLongitude(BigDecimal value) { longitude = value; }
+    public BigDecimal getLatitude() { return latitude; }
+    public void setLatitude(BigDecimal value) { latitude = value; }
+    public String getDistrict() { return district; }
+    public void setDistrict(String value) { district = value; }
+    public String getAdcode() { return adcode; }
+    public void setAdcode(String value) { adcode = value; }
+    public String getAmapType() { return amapType; }
+    public void setAmapType(String value) { amapType = value; }
+    public LocalDateTime getAmapSyncedAt() { return amapSyncedAt; }
+    public void setAmapSyncedAt(LocalDateTime value) { amapSyncedAt = value; }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

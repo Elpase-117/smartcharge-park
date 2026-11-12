@@ -33,6 +33,10 @@ mybatis-plus:
 server:
   port: ${SERVER_PORT:8082}
 
+smartcharge:
+  amap:
+    web-key: ${AMAP_WEB_KEY:}
+
 management:
   endpoints:
     web:

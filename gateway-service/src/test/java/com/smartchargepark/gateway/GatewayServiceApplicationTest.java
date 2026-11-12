@@ -16,6 +16,7 @@ import java.time.Duration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "AMAP_JS_SECURITY_CODE=",
         "spring.cloud.discovery.enabled=false",
         "spring.cloud.nacos.discovery.enabled=false",
         "spring.cloud.nacos.discovery.register-enabled=false",
@@ -34,6 +35,14 @@ class GatewayServiceApplicationTest {
 
     @Autowired
     private GatewayProperties properties;
+
+    @Test
+    void missingMapSecretStillStartsAndProvidesCorsSafeLocalStatus() {
+        client.get().uri("/_AMapService/status").header("Origin", "http://127.0.0.1:5173")
+                .exchange().expectStatus().isOk()
+                .expectHeader().valueEquals("Access-Control-Allow-Origin", "http://127.0.0.1:5173")
+                .expectBody().jsonPath("$.configured").isEqualTo(false);
+    }
 
     @Test
     void startsReactiveServerAndExposesMinimalHealth() {

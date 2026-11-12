@@ -68,6 +68,13 @@ h1 { margin-bottom: 8px; font-size: clamp(28px, 4vw, 40px); }
 .drawer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .drawer-head .eyebrow { margin-top: 0; }
 .details { margin-top: 24px; }
+.poi-details { margin-top: 24px; font-size: 14px; line-height: 1.7; }
+.poi-details p { overflow-wrap: anywhere; margin-bottom: 8px; }
+.poi-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.poi-actions .el-button { margin-left: 0; }
+.map-info { max-width: 280px; color: #183153; font-size: 13px; line-height: 1.6; }
+.map-info p { margin: 0 0 7px; }
+.map-info button { cursor: pointer; padding: 7px 10px; border: 1px solid #1769e0; border-radius: 5px; color: #1769e0; background: white; }
 .reservation-box { margin-top: 26px; padding: 22px; border-radius: 14px; background: #f5f8fc; }
 .slot-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 18px 0; }
 .slot-button { padding: 12px 8px; border: 1px solid #cbd8e8; border-radius: 10px; background: #fff; color: #183153; cursor: pointer; }

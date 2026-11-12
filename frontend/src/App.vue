@@ -1,7 +1,9 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from './api'
+import StationMap from './components/StationMap.vue'
+import { stationCoordinates } from './mapUtils'
 
 const loggedIn = ref(false)
 const loginForm = reactive({ username: 'driver', password: '123456' })
@@ -15,6 +17,7 @@ const result = ref(null)
 const resultVisible = ref(false)
 const reservationMaxDays = ref(null)
 const rulesLoading = ref(false)
+const stationMap = ref(null)
 let rulesRequestId = 0
 
 function formatLocalDate(date) {
@@ -126,6 +129,13 @@ async function openStation(station) {
   await loadReservationRules()
 }
 
+async function mapAction(action) {
+  const station = selected.value
+  selected.value = null
+  await nextTick()
+  stationMap.value?.[action](station)
+}
+
 async function loadAvailability() {
   if (!selected.value || !reservation.reservationDate ||
       disabledReservationDate(new Date(`${reservation.reservationDate}T00:00:00`))) return
@@ -214,7 +224,7 @@ onMounted(async () => {
 
       <el-alert class="data-boundary" type="info" :closable="false" show-icon>
         <template #title>重庆北碚区域公开站点样本</template>
-        站点基础信息来源于高德地图公开页面；空闲数量为采集时点状态快照。当前 Demo 未接入第三方实时运营接口，预约容量与订单属于业务流程模拟。
+        已补全的站点地理信息经高德 POI 数据校准；未补全位置的站点仍保留公开页面基础信息。空闲枪数、电价和停车政策仍为采集时点快照，当前 Demo 未接入充电运营商实时接口，预约容量与订单属于业务流程模拟。
       </el-alert>
 
       <section class="search-panel">
@@ -222,8 +232,10 @@ onMounted(async () => {
         <el-button type="primary" @click="loadStations">查询站点</el-button>
       </section>
 
+      <StationMap ref="stationMap" :stations="stations" :selected-id="selected?.id" @select="openStation" />
+
       <section v-loading="loading" class="station-grid">
-        <article v-for="station in stations" :key="station.id" class="station-card">
+        <article v-for="station in stations" :key="station.id" class="station-card" @click="openStation(station)">
           <div class="station-card__head">
             <div>
               <span class="status-dot" :class="{ 'status-dot--full': station.status === 'SNAPSHOT_FULL' }"></span>
@@ -242,7 +254,8 @@ onMounted(async () => {
             <div><strong>¥{{ station.electricityPrice }}</strong><span>采集时点电价/度</span></div>
           </div>
           <p class="policy-line" :title="station.parkingPolicy"><strong>停车：</strong>{{ station.parkingPolicy }}</p>
-          <el-button type="primary" plain class="full-button" @click="openStation(station)">查看详情 / 预约</el-button>
+          <p v-if="!stationCoordinates(station)" class="capacity-note">地图位置暂未补全</p>
+          <el-button type="primary" plain class="full-button" @click.stop="openStation(station)">查看详情 / 预约</el-button>
         </article>
       </section>
 
@@ -273,6 +286,29 @@ onMounted(async () => {
             <el-descriptions-item label="数据来源">{{ selected.dataSource }}</el-descriptions-item>
             <el-descriptions-item label="数据边界" :span="2">{{ selected.dataNotice }}</el-descriptions-item>
           </el-descriptions>
+
+          <section class="poi-details">
+            <h3>地图位置</h3>
+            <el-alert
+              v-if="(selected.amapName || '').includes('内部专用')"
+              type="warning"
+              :closable="false"
+              show-icon
+              title="高德地图将该站点标注为“内部专用”，实际对外开放情况请以现场规则为准。"
+            />
+            <template v-if="stationCoordinates(selected)">
+              <p><strong>高德标准名称：</strong>{{ selected.amapName || selected.name }}</p>
+              <p><strong>标准地址：</strong>{{ selected.amapAddress || selected.address }}</p>
+              <p v-if="selected.district"><strong>行政区：</strong>{{ selected.district }}</p>
+              <p><strong>经纬度：</strong>{{ selected.longitude }}, {{ selected.latitude }}（高德坐标）</p>
+              <div class="poi-actions">
+                <el-button @click="mapAction('focus')">在地图中定位</el-button>
+                <el-button @click="mapAction('planRoute')">规划路线</el-button>
+                <el-button @click="mapAction('navigate')">高德导航</el-button>
+              </div>
+            </template>
+            <p v-else class="capacity-note">地图位置暂未补全，仍可正常预约。</p>
+          </section>
 
           <section class="reservation-box">
             <h3>选择日期与预约时段</h3>
