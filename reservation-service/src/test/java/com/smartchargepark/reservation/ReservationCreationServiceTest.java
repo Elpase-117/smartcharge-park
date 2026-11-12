@@ -7,7 +7,6 @@ import com.smartchargepark.reservation.service.*;
 import com.smartchargepark.reservation.experiment.RollbackExperimentHook;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 class ReservationCreationServiceTest {
@@ -15,8 +14,8 @@ class ReservationCreationServiceTest {
     private final StationRemoteService stations=mock(StationRemoteService.class);
     private final OrderFeignClient orders=mock(OrderFeignClient.class);
     private final RollbackExperimentHook hook=mock(RollbackExperimentHook.class);
-    private final ReservationCreationService service=new ReservationCreationService(writer,stations,orders,new ReservationProperties(),hook);
-    private final ReservationRequest request=new ReservationRequest(4L, LocalDate.now().plusDays(1),"19:00-20:00");
+    private final ReservationCreationService service=new ReservationCreationService(writer,stations,orders,new ReservationProperties(),hook,ReservationTestTime.at("17:00"));
+    private final ReservationRequest request=new ReservationRequest(4L, ReservationTestTime.TODAY.plusDays(1),"19:00-20:00");
     private void prepare() {
         var station=new StationSummary(4L,"小鹏站",2,new BigDecimal("5.00"),new BigDecimal("0.35"));
         when(stations.detail(4L)).thenReturn(station);
@@ -36,7 +35,7 @@ class ReservationCreationServiceTest {
         verifyNoInteractions(hook);
     }
     @Test void rejectsInvalidDateBeforeCallingWriteOrOrder() {
-        assertThatThrownBy(()->service.create(new ReservationRequest(4L,LocalDate.now().minusDays(1),"19:00-20:00"),1L)).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        assertThatThrownBy(()->service.create(new ReservationRequest(4L,ReservationTestTime.TODAY.minusDays(1),"19:00-20:00"),1L)).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
         verifyNoInteractions(writer,orders,stations,hook);
     }
     @Test void propagatesExperimentFailureOnlyAfterBothBranchCallsReturn() {

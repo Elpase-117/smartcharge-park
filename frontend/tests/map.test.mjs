@@ -2,6 +2,9 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { computed, effectScope, nextTick, reactive, ref, watch } from 'vue'
+import * as Vue from 'vue'
+import { parse } from '@vue/compiler-sfc'
+import { parse as parseTemplate, compile } from '@vue/compiler-dom'
 import { stationCoordinates, amapUri, distanceMeters, nearestStation, formatDistance } from '../src/mapUtils.js'
 
 const station = { id: 4, name: '小鹏（吾悦 & 广场）', amapName: '小鹏标准名称', longitude: '106.432610', latitude: '29.823147', operatorBrand: '小鹏', chargingMode: '超充/快充', availableChargers: 0, totalChargers: 4 }
@@ -381,7 +384,7 @@ function app(t, overrides = {}) {
     computed, nextTick, onMounted: () => {}, reactive, ref, watch, ElMessage: messages, api,
     distanceMeters, formatDistance, nearestStation, stationCoordinates,
     localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) }
-  }, ['stations', 'keyword', 'appliedKeyword', 'activeMapStation', 'userLocation', 'locationStatus', 'mapSelectionMode', 'recommendationTitle', 'activeDistance', 'selected', 'stationMap', 'reservation', 'reservationMaxDays', 'resultVisible', 'resultStation', 'result', 'availability', 'loadStations', 'receiveLocation', 'retryLocation', 'openStation', 'mapAction', 'logout', 'disabledReservationDate', 'loadReservationRules', 'createReservation', 'formatLocalDate']))
+  }, ['stations', 'keyword', 'appliedKeyword', 'activeMapStation', 'userLocation', 'locationStatus', 'mapSelectionMode', 'recommendationTitle', 'activeDistance', 'selected', 'stationMap', 'reservation', 'reservationMaxDays', 'resultVisible', 'resultStation', 'result', 'availability', 'loadStations', 'receiveLocation', 'retryLocation', 'openStation', 'mapAction', 'logout', 'disabledReservationDate', 'loadReservationRules', 'loadAvailability', 'createReservation', 'formatLocalDate']))
   t.after(() => scope.stop())
   return { ...state, calls }
 }
@@ -584,4 +587,81 @@ test('reservation payload is preserved and duplicate clicks or success-dialog re
   assert.equal(a.resultStation.value.id, station.id)
   await a.createReservation()
   assert.equal(payloads.length, 1)
+})
+
+// Compile the actual slot template so disabled state and labels are tested together.
+const { descriptor: appDescriptor } = parse(readFileSync(new URL('../src/App.vue', import.meta.url), 'utf8'))
+function findSlotTemplate(node) {
+  if (node.tag === 'div' && node.props?.some(prop => prop.name === 'class' && prop.value?.content === 'slot-list')) return node.loc.source
+  for (const child of node.children || []) {
+    const source = findSlotTemplate(child)
+    if (source) return source
+  }
+}
+const slotTemplate = findSlotTemplate(parseTemplate(appDescriptor.template.content))
+assert.ok(slotTemplate, 'the reservation slot template must exist')
+const renderSlots = new Function('Vue', compile(slotTemplate, { mode: 'function' }).code)(Vue)
+function renderedSlot(item) {
+  const state = { availability: [item], reservation: { timeSlot: '' } }
+  function findButton(node) {
+    if (node?.type === 'button') return node
+    for (const child of (Array.isArray(node) ? node : node?.children) || []) {
+      const button = findButton(child)
+      if (button) return button
+    }
+  }
+  function text(node) {
+    if (typeof node === 'string') return node
+    if (Array.isArray(node)) return node.map(text).join('')
+    return node?.children ? text(node.children) : ''
+  }
+  const button = findButton(renderSlots(state, []))
+  assert.ok(button, 'a slot must render a native button')
+  return { state, button, label: text(button) }
+}
+
+test('server-expired slots are disabled and say 已过时段 regardless of their remaining capacity', () => {
+  for (const remaining of [2, 0]) {
+    const { button, label } = renderedSlot({ timeSlot: '09:00-10:00', capacity: 2, remaining, expired: true })
+    assert.equal(button.props.disabled, true)
+    assert.match(label, /已过时段/)
+    assert.doesNotMatch(label, /剩余|已满/)
+  }
+})
+
+test('full slots that have not expired are disabled and say 已满', () => {
+  const { button, label } = renderedSlot({ timeSlot: '14:00-15:00', capacity: 2, remaining: 0, expired: false })
+  assert.equal(button.props.disabled, true)
+  assert.match(label, /已满/)
+  assert.doesNotMatch(label, /已过时段/)
+})
+
+test('non-expired slots with capacity remain selectable and show their real remaining capacity', () => {
+  const { state, button, label } = renderedSlot({ timeSlot: '19:00-20:00', capacity: 2, remaining: 2, expired: false })
+  assert.equal(button.props.disabled, false)
+  assert.match(label, /剩余 2 \/ 2/)
+  button.props.onClick()
+  assert.equal(state.reservation.timeSlot, '19:00-20:00')
+})
+
+test('a refreshed server-expired flag clears the previously selected slot', async t => {
+  let expired = false
+  const a = app(t, { availability: async () => [{ timeSlot: '09:00-10:00', capacity: 2, remaining: 2, expired }] })
+  await a.openStation(station)
+  a.reservation.timeSlot = '09:00-10:00'
+  expired = true
+  await a.loadAvailability()
+  assert.equal(a.reservation.timeSlot, '')
+  assert.equal(a.availability.value[0].remaining, 2)
+  assert.equal(a.availability.value[0].expired, true)
+})
+
+test('an already expired selection never sends a create request from the frontend', async t => {
+  const a = app(t, { availability: async () => [{ timeSlot: '09:00-10:00', capacity: 2, remaining: 2, expired: true }] })
+  await a.openStation(station)
+  a.reservation.timeSlot = '09:00-10:00'
+  await a.createReservation()
+  assert.equal(a.calls.reservations.length, 0)
+  assert.equal(a.reservation.timeSlot, '')
+  assert.deepEqual(a.calls.messages.at(-1), ['warning', '该预约时段已开始或已结束，请选择其他时段'])
 })

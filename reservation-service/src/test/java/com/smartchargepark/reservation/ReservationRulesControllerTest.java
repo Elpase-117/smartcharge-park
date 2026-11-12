@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.time.LocalDate;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -24,7 +23,7 @@ class ReservationRulesControllerTest {
     private final ReservationResourceMapper mapper = mock(ReservationResourceMapper.class);
     private final StationRemoteService stations = mock(StationRemoteService.class);
     private final ReservationAvailabilityService availability =
-            new ReservationAvailabilityService(mapper, stations, properties);
+            new ReservationAvailabilityService(mapper, stations, properties, ReservationTestTime.at("17:00"));
     private final MockMvc mvc = MockMvcBuilders
             .standaloneSetup(new ReservationResourceController(availability, properties))
             .setControllerAdvice(new CommonWebExceptionHandler()).build();
@@ -66,6 +65,6 @@ class ReservationRulesControllerTest {
 
     private org.springframework.test.web.servlet.ResultActions requestAvailability(int days) throws Exception {
         return mvc.perform(get("/api/reservations/availability")
-                .param("stationId", "1").param("date", LocalDate.now().plusDays(days).toString()));
+                .param("stationId", "1").param("date", ReservationTestTime.TODAY.plusDays(days).toString()));
     }
 }

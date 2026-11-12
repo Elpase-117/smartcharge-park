@@ -11,7 +11,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.net.ConnectException;
-import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -40,9 +39,9 @@ class StationFeignFallbackFactoryTest {
     void fallbackStopsAvailabilityBeforeAnyReservationQuery() {
         ReservationResourceMapper mapper = mock(ReservationResourceMapper.class);
         StationRemoteService remote = new StationRemoteService(factory.create(new ConnectException()));
-        ReservationAvailabilityService service = new ReservationAvailabilityService(mapper, remote, new ReservationProperties());
+        ReservationAvailabilityService service = new ReservationAvailabilityService(mapper, remote, new ReservationProperties(), ReservationTestTime.at("17:00"));
 
-        assertThatThrownBy(() -> service.availability(4L, LocalDate.now().plusDays(1)))
+        assertThatThrownBy(() -> service.availability(4L, ReservationTestTime.TODAY.plusDays(1)))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
         verifyNoInteractions(mapper);

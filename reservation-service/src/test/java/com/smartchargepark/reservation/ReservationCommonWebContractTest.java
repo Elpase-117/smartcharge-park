@@ -72,10 +72,11 @@ class ReservationCommonWebContractTest {
     }
 
     @Test void availabilityAndReservationSuccessDtosAreNotWrapped() throws Exception {
-        when(availability.availability(4L, date)).thenReturn(List.of(new AvailabilityItem("19:00-20:00", 2, 0, 2)));
+        when(availability.availability(4L, date)).thenReturn(List.of(new AvailabilityItem("19:00-20:00", 2, 0, 2, false)));
         mvc.perform(get("/api/reservations/availability").param("stationId", "4").param("date", date.toString()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].timeSlot").value("19:00-20:00"))
-                .andExpect(jsonPath("$[0].remaining").value(2));
+                .andExpect(jsonPath("$[0].remaining").value(2))
+                .andExpect(jsonPath("$[0].expired").value(false));
         when(users.requireUserId("Bearer unit-marker", null, null)).thenReturn(2L);
         when(creation.create(any(), eq(2L))).thenReturn(new ReservationResult(10L, "CONFIRMED", 11L,
                 "SCP-unit-order", "PENDING_PAYMENT", BigDecimal.ZERO, 4L, date, "19:00-20:00"));

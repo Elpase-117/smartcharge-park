@@ -1,4 +1,5 @@
 package com.smartchargepark.reservation.service;
+import com.smartchargepark.common.web.BusinessException;
 import com.smartchargepark.reservation.client.OrderFeignClient;
 import com.smartchargepark.reservation.config.ReservationProperties;
 import com.smartchargepark.reservation.dto.*;
@@ -14,7 +15,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
-import java.util.List;
+import java.time.LocalDateTime;
 @Service
 public class ReservationCreationService {
     private static final Logger log = LoggerFactory.getLogger(ReservationCreationService.class);
@@ -23,23 +24,30 @@ public class ReservationCreationService {
     private final OrderFeignClient orders;
     private final ReservationProperties properties;
     private final RollbackExperimentHook rollbackExperiment;
+    private final ReservationTimePolicy timePolicy;
     public ReservationCreationService(ReservationWriteService writer, StationRemoteService stations,
                                       OrderFeignClient orders, ReservationProperties properties,
-                                      RollbackExperimentHook rollbackExperiment) {
+                                      RollbackExperimentHook rollbackExperiment, ReservationTimePolicy timePolicy) {
         this.writer = writer; this.stations = stations; this.orders = orders; this.properties = properties;
         this.rollbackExperiment = rollbackExperiment;
+        this.timePolicy = timePolicy;
     }
     @GlobalTransactional(name = "create-reservation-and-order", rollbackFor = Exception.class)
     public ReservationResult create(ReservationRequest request, Long userId) {
         if (userId == null || userId <= 0) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
         }
-        LocalDate today = LocalDate.now();
+        LocalDateTime now = timePolicy.now();
+        LocalDate today = now.toLocalDate();
         if (request.stationId() == null || request.stationId() <= 0 || request.reservationDate() == null
                 || request.reservationDate().isBefore(today)
                 || request.reservationDate().isAfter(today.plusDays(properties.getMaxDays()))
-                || request.timeSlot() == null || !List.of("09:00-10:00", "14:00-15:00", "19:00-20:00").contains(request.timeSlot())) {
+                || !timePolicy.isSupported(request.timeSlot())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "预约日期或时段不在可选范围内");
+        }
+        if (timePolicy.isExpired(request.reservationDate(), request.timeSlot(), now)) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "RESERVATION_SLOT_EXPIRED",
+                    "该预约时段已开始或已结束，请选择其他时段");
         }
         StationSummary station = stations.detail(request.stationId());
         if (station.parkingFee() == null || station.serviceFee() == null) {

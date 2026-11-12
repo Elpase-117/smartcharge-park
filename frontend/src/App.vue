@@ -224,7 +224,7 @@ async function loadAvailability() {
     const items = await api.availability(stationId, date)
     if (selected.value?.id !== stationId || reservation.reservationDate !== date) return
     availability.value = items
-    if (reservation.timeSlot && !availability.value.some(item => item.timeSlot === reservation.timeSlot)) {
+    if (reservation.timeSlot && !availability.value.some(item => item.timeSlot === reservation.timeSlot && !item.expired)) {
       reservation.timeSlot = ''
     }
   } catch (error) {
@@ -236,6 +236,11 @@ async function createReservation() {
   if (loading.value || resultVisible.value || rulesLoading.value || reservationMaxDays.value === null) return
   if (!reservation.timeSlot) {
     ElMessage.warning('请选择预约时段')
+    return
+  }
+  if (selectedAvailability.value?.expired) {
+    reservation.timeSlot = ''
+    ElMessage.warning('该预约时段已开始或已结束，请选择其他时段')
     return
   }
   loading.value = true
@@ -368,7 +373,7 @@ onMounted(async () => {
             <div class="reservation-step"><span class="step-number">01</span><label class="step-label" for="reservation-date">选择日期</label></div>
             <el-date-picker id="reservation-date" v-model="reservation.reservationDate" type="date" value-format="YYYY-MM-DD" :editable="false" :clearable="false" :disabled="rulesLoading || reservationMaxDays === null" :disabled-date="disabledReservationDate" @change="loadAvailability" />
             <div class="reservation-step"><span class="step-number">02</span><span class="step-label">选择预约时段</span></div>
-            <div class="slot-list"><button v-for="item in availability" :key="item.timeSlot" class="slot-button" :class="{ active: reservation.timeSlot === item.timeSlot }" :disabled="item.remaining === 0" :aria-pressed="reservation.timeSlot === item.timeSlot" @click="reservation.timeSlot = item.timeSlot"><span>{{ item.timeSlot }}</span><small>{{ item.remaining === 0 ? '已满' : `剩余 ${item.remaining} / ${item.capacity}` }}</small></button></div>
+            <div class="slot-list"><button v-for="item in availability" :key="item.timeSlot" class="slot-button" :class="{ active: reservation.timeSlot === item.timeSlot }" :disabled="item.expired || item.remaining === 0" :aria-pressed="reservation.timeSlot === item.timeSlot" @click="reservation.timeSlot = item.timeSlot"><span>{{ item.timeSlot }}</span><small>{{ item.expired ? '已过时段' : item.remaining === 0 ? '已满' : `剩余 ${item.remaining} / ${item.capacity}` }}</small></button></div>
             <p v-if="selectedAvailability" class="capacity-note">当前剩余 {{ selectedAvailability.remaining }} / {{ selectedAvailability.capacity }} 个预约名额</p>
             <p class="reservation-boundary">仅为 Demo 系统内预约容量，不代表现场设备可用。</p>
             <el-button type="primary" :loading="loading" :disabled="rulesLoading || reservationMaxDays === null || resultVisible" class="full-button" @click="createReservation">创建预约与待支付订单</el-button>

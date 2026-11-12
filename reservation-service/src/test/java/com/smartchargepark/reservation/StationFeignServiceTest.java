@@ -77,10 +77,10 @@ class StationFeignServiceTest {
     @Test
     void feignFailureStopsReservationQueries() {
         ReservationResourceMapper mapper = mock(ReservationResourceMapper.class);
-        ReservationAvailabilityService availability = new ReservationAvailabilityService(mapper, service, new ReservationProperties());
+        ReservationAvailabilityService availability = new ReservationAvailabilityService(mapper, service, new ReservationProperties(), ReservationTestTime.at("17:00"));
         when(client.getStation(4L)).thenThrow(httpError(503));
 
-        assertThatThrownBy(() -> availability.availability(4L, LocalDate.now().plusDays(1)))
+        assertThatThrownBy(() -> availability.availability(4L, ReservationTestTime.TODAY.plusDays(1)))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
         verifyNoInteractions(mapper);
@@ -89,15 +89,15 @@ class StationFeignServiceTest {
     @Test
     void availabilityUsesCapacityReturnedByFeign() {
         ReservationResourceMapper mapper = mock(ReservationResourceMapper.class);
-        ReservationAvailabilityService availability = new ReservationAvailabilityService(mapper, service, new ReservationProperties());
-        LocalDate date = LocalDate.now().plusDays(1);
+        ReservationAvailabilityService availability = new ReservationAvailabilityService(mapper, service, new ReservationProperties(), ReservationTestTime.at("17:00"));
+        LocalDate date = ReservationTestTime.TODAY.plusDays(1);
         when(client.getStation(4L)).thenReturn(new StationSummary(4L, "小鹏站", 5));
         when(mapper.countActive(4L, date, "09:00-10:00")).thenReturn(2L);
 
         assertThat(availability.availability(4L, date)).containsExactly(
-                new AvailabilityItem("09:00-10:00", 5, 2, 3),
-                new AvailabilityItem("14:00-15:00", 5, 0, 5),
-                new AvailabilityItem("19:00-20:00", 5, 0, 5));
+                new AvailabilityItem("09:00-10:00", 5, 2, 3, false),
+                new AvailabilityItem("14:00-15:00", 5, 0, 5, false),
+                new AvailabilityItem("19:00-20:00", 5, 0, 5, false));
     }
 
     private FeignException httpError(int status) {

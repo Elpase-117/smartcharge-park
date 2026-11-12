@@ -15,7 +15,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -31,7 +30,7 @@ class OrderFailurePropagationTest {
         var orders = mock(OrderFeignClient.class);
         var hook = mock(RollbackExperimentHook.class);
         var users = mock(CurrentUserService.class);
-        var service = new ReservationCreationService(writer, stations, orders, new ReservationProperties(), hook);
+        var service = new ReservationCreationService(writer, stations, orders, new ReservationProperties(), hook, ReservationTestTime.at("17:00"));
         var station = new StationSummary(4L, "测试站点", 2, BigDecimal.ONE, BigDecimal.ONE);
         when(stations.detail(4L)).thenReturn(station);
         var reservation = new Reservation();
@@ -45,7 +44,7 @@ class OrderFailurePropagationTest {
         var mvc = MockMvcBuilders.standaloneSetup(new ReservationController(service, users))
                 .setControllerAdvice(new CommonWebExceptionHandler()).build();
         int expected = downstreamStatus >= 400 && downstreamStatus < 500 ? downstreamStatus : 503;
-        String body = "{\"stationId\":4,\"reservationDate\":\"" + LocalDate.now().plusDays(1)
+        String body = "{\"stationId\":4,\"reservationDate\":\"" + ReservationTestTime.TODAY.plusDays(1)
                 + "\",\"timeSlot\":\"19:00-20:00\"}";
         var result = mvc.perform(post("/api/reservations").contentType("application/json")
                         .content(body).header("Authorization", "Bearer unit-marker"))
